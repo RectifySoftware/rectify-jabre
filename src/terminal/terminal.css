@@ -83,8 +83,9 @@ html, body { height: 100%; overflow: hidden; }
 
 .iata-results-empty { padding: 14px 4px; color: #777; font-size: 12px; font-family: var(--font-mono); }
 .iata-more-note { padding: 6px 4px; color: #888; font-size: 11px; font-family: var(--font-mono); }
-.iata-results table.data-table { margin-top: 10px; }
-.iata-results table.data-table td, .iata-results table.data-table th { color: #ddd; border-color: #333; }
+.iata-results table.data-table { margin-top: 10px; background: #141414; }
+.iata-results table.data-table td { color: #ddd; border-color: #333; }
+.iata-results table.data-table th { color: #ccc; background: #2a2a2a; border-color: #444; }
 .iata-results table.data-table tbody tr:nth-child(even) { background: #202020; }
 .iata-results table.data-table tbody tr:hover { background: #2c1414; }
 .iata-results .iata-code { color: var(--red-bright); font-weight: bold; }
