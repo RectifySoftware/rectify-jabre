@@ -1,0 +1,16 @@
+name: Notify site of new release
+
+on:
+  release:
+    types: [published]
+
+jobs:
+  notify:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Trigger site revalidation
+        run: |
+          curl -sf -X POST "${{ secrets.SITE_REVALIDATE_URL }}" \
+            -H "x-revalidate-secret: ${{ secrets.REVALIDATE_SECRET }}" \
+            -H "Content-Type: application/json" \
+            -d '{"owner":"RectifySoftware","repo":"rectify-jabre"}'
