@@ -1,8 +1,8 @@
-# Rectify Jabre
+![image](https://raw.githubusercontent.com/govll/rectify-jabre/refs/heads/main/assets/logo.png)
+# Rectify™ Jabre
 
-A Windows desktop GDS-style travel booking terminal, built with Electron. Styled after
-2000s-era airline reservation terminals (Sabre Red 360 / Amadeus Selling Platform) —
-dark chrome, dense data tables, a cryptic command line, and no modern SaaS chrome.
+Rectify™ Jabre is a Windows desktop GDS-style travel booking terminal, built with Electron. It is based off other 
+airline reservation terminals like Sabre Red 360 or Amadeus Selling Platform.
 
 ## Running in development
 
