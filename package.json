@@ -1,6 +1,6 @@
 {
   "name": "rectify-jabre",
-  "version": "1.0.1",
+  "version": "1.0.2",
   "description": "Rectify Jabre - GDS-style travel booking terminal",
   "main": "main.js",
   "author": "Rectify Jabre",
@@ -28,7 +28,8 @@
     "publish": {
       "provider": "github",
       "owner": "govll",
-      "repo": "rectify-jabre"
+      "repo": "rectify-jabre",
+      "releaseType": "release"
     },
     "files": [
       "main.js",
