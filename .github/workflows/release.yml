@@ -1,0 +1,33 @@
+name: Release
+
+# Builds the Windows installer and publishes it to GitHub Releases whenever a
+# version tag (e.g. v1.0.4) is pushed. Runs entirely on GitHub's own servers
+# using the automatically-provided GITHUB_TOKEN - no local machine, no
+# personal access token, no `npm run release` needed on anyone's laptop.
+on:
+  push:
+    tags:
+      - 'v*'
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    runs-on: windows-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Build and publish
+        run: npx electron-builder --publish always
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
