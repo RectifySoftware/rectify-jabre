@@ -663,6 +663,65 @@ function hideHelp() { document.getElementById('helpBackdrop').classList.remove('
 // ---------------------------------------------------------------------------
 // Settings modal (live data / SearchAPI.io Google Flights)
 // ---------------------------------------------------------------------------
+// ---------------------------------------------------------------------------
+// IATA code lookup modal
+// ---------------------------------------------------------------------------
+let iataSearchDebounce = null;
+
+function showIataLookup() {
+  const input = document.getElementById('iataQueryInput');
+  document.getElementById('iataResults').innerHTML = '';
+  document.getElementById('iataBackdrop').classList.add('show');
+  input.focus();
+}
+function hideIataLookup() { document.getElementById('iataBackdrop').classList.remove('show'); }
+
+function renderIataResults(data) {
+  const el = document.getElementById('iataResults');
+  if (!data || !data.query) { el.innerHTML = ''; return; }
+  if (data.total === 0) {
+    el.innerHTML = `<div class="iata-results-empty">NO AIRPORTS MATCHED "${escapeHtml(data.query)}"</div>`;
+    return;
+  }
+  const rows = data.results.map((a) => `<tr>
+    <td class="iata-code">${a.iata}</td>
+    <td>${escapeHtml(a.name)}</td>
+    <td>${escapeHtml(a.city || '')}</td>
+    <td>${escapeHtml(a.countryName || a.country || '')}</td>
+  </tr>`).join('');
+  const moreNote = data.total > data.results.length
+    ? `<div class="iata-more-note">SHOWING ${data.results.length} OF ${data.total} MATCHES - NARROW YOUR SEARCH FOR MORE PRECISE RESULTS</div>`
+    : '';
+  el.innerHTML = `<div class="iata-results">
+    <table class="data-table">
+      <thead><tr><th>CODE</th><th>AIRPORT</th><th>CITY</th><th>COUNTRY</th></tr></thead>
+      <tbody>${rows}</tbody>
+    </table>
+    ${moreNote}
+  </div>`;
+}
+
+async function runIataSearch(query) {
+  if (!query.trim()) { document.getElementById('iataResults').innerHTML = ''; return; }
+  const data = await window.rj.searchAirports(query);
+  renderIataResults(data);
+}
+
+function bindIataLookupModal() {
+  document.getElementById('iataClose').addEventListener('click', hideIataLookup);
+  document.getElementById('iataBackdrop').addEventListener('click', (e) => {
+    if (e.target.id === 'iataBackdrop') hideIataLookup();
+  });
+  const input = document.getElementById('iataQueryInput');
+  input.addEventListener('input', () => {
+    clearTimeout(iataSearchDebounce);
+    iataSearchDebounce = setTimeout(() => runIataSearch(input.value), 200);
+  });
+  input.addEventListener('keydown', (e) => {
+    if (e.key === 'Enter') { clearTimeout(iataSearchDebounce); runIataSearch(input.value); }
+  });
+}
+
 async function showSettings() {
   const status = document.getElementById('settingsStatus');
   status.textContent = '';
@@ -748,7 +807,7 @@ const MENUS = {
     { label: 'Refresh Queue', kbd: '', action: () => refreshQueue() }
   ],
   booking: [
-    { label: 'IATA Code Lookup...', kbd: '', action: () => promptFor('Enter: DA <city, country, or airport name> e.g. DA LEEDS:') },
+    { label: 'IATA Code Lookup...', kbd: '', action: () => showIataLookup() },
     { label: 'Availability Search...', kbd: '', action: () => promptFor('Enter availability command, e.g. AORDJFK25AUG:') },
     { label: 'Add Passenger Name...', kbd: '', action: () => promptFor('Enter name command, e.g. NM1SMITH/JOHN:') },
     { label: 'Price Itinerary', kbd: 'F6', action: () => runCommand('FXP') },
@@ -837,6 +896,7 @@ function bindToolbar() {
     if (action === 'newtab') addTab();
     else if (action === 'closetab') closeTab(activeTabId);
     else if (action === 'focuscmd') focusCmd();
+    else if (action === 'iata') showIataLookup();
     else if (action === 'queue') runCommand('QR');
     else if (action === 'price') runCommand('FXP');
     else if (action === 'endretrieve') runCommand('ER');
@@ -922,7 +982,7 @@ function bindShortcuts() {
     else if (e.key === 'F10') { e.preventDefault(); runCommand('SI'); }
     else if (e.key === 'F11') { e.preventDefault(); promptCurrency(); }
     else if (e.key === 'F12') { e.preventDefault(); toggleBottomPane(); }
-    else if (e.key === 'Escape') { hideHelp(); hideSettings(); }
+    else if (e.key === 'Escape') { hideHelp(); hideSettings(); hideIataLookup(); }
     else if (e.ctrlKey && e.key.toLowerCase() === 'w') { e.preventDefault(); closeTab(activeTabId); }
     else if (e.ctrlKey && e.key.toLowerCase() === 't') { e.preventDefault(); addTab(); }
   });
@@ -946,6 +1006,8 @@ function init() {
     if (e.target.id === 'helpBackdrop') hideHelp();
   });
   bindSettingsModal();
+  bindIataLookupModal();
+  document.getElementById('iataQuickLink').addEventListener('click', showIataLookup);
   document.getElementById('bottomToggle').addEventListener('click', toggleBottomPane);
   document.getElementById('sbCurrencySeg').addEventListener('click', promptCurrency);
 

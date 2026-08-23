@@ -23,6 +23,7 @@
     <div class="tbtn" data-action="closetab" title="Close Tab (Ctrl+W)">X</div>
     <div class="tb-sep"></div>
     <div class="tbtn" data-action="focuscmd" title="Command Line (F3)">&gt;_</div>
+    <div class="tbtn" data-action="iata" title="IATA Code Lookup">DA</div>
     <div class="tbtn" data-action="queue" title="Queue Review (F4)">Q</div>
     <div class="tbtn" data-action="price" title="Price PNR (F6)">$</div>
     <div class="tbtn" data-action="endretrieve" title="End &amp; Retrieve (F7)">ER</div>
@@ -37,6 +38,7 @@
     <div class="sidebar">
       <div class="sidebar-head"><span>QUEUE / PNR LIST</span><span class="cnt" id="queueCount">0</span></div>
       <div class="queue-list" id="queueList"></div>
+      <div class="sidebar-footer" id="iataQuickLink">IATA CODE LOOKUP...</div>
     </div>
 
     <div class="center">
@@ -118,6 +120,20 @@
         <button id="settingsClearBtn">CLEAR BOTH / USE SIMULATED DATA</button>
       </div>
       <div id="settingsStatus" style="margin-top:10px;font-size:11px;"></div>
+    </div>
+  </div>
+</div>
+
+<div class="modal-backdrop" id="iataBackdrop">
+  <div class="modal" style="width:680px;">
+    <div class="modal-head"><span>IATA CODE LOOKUP</span><span class="x" id="iataClose">CLOSE [X]</span></div>
+    <div class="modal-body">
+      <p style="color:#888;">Search by city, country, or airport name - offline, instant, no API quota used.</p>
+      <div class="field-row">
+        <label for="iataQueryInput">SEARCH</label>
+        <input id="iataQueryInput" type="text" autocomplete="off" spellcheck="false" placeholder="e.g. Leeds, Portugal, Heathrow...">
+      </div>
+      <div id="iataResults"></div>
     </div>
   </div>
 </div>

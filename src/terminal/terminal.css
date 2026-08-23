@@ -74,6 +74,21 @@ html, body { height: 100%; overflow: hidden; }
 .queue-row .nm { color: #999; display: block; margin-top: 1px; }
 .queue-empty { padding: 14px 8px; color: #666; font-size: 11px; font-style: italic; }
 
+.sidebar-footer {
+  padding: 7px 8px; background: #1c1c1c; border-top: 1px solid var(--border);
+  font-size: 11px; color: var(--red-bright); letter-spacing: 0.5px;
+  cursor: default; text-align: center;
+}
+.sidebar-footer:hover { background: var(--red-dark); color: #fff; }
+
+.iata-results-empty { padding: 14px 4px; color: #777; font-size: 12px; font-family: var(--font-mono); }
+.iata-more-note { padding: 6px 4px; color: #888; font-size: 11px; font-family: var(--font-mono); }
+.iata-results table.data-table { margin-top: 10px; }
+.iata-results table.data-table td, .iata-results table.data-table th { color: #ddd; border-color: #333; }
+.iata-results table.data-table tbody tr:nth-child(even) { background: #202020; }
+.iata-results table.data-table tbody tr:hover { background: #2c1414; }
+.iata-results .iata-code { color: var(--red-bright); font-weight: bold; }
+
 /* ---------- Center ---------- */
 .center { flex: 1; display: flex; flex-direction: column; min-width: 0; background: var(--content-bg); }
 
