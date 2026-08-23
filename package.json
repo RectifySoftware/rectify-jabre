@@ -27,7 +27,7 @@
     },
     "publish": {
       "provider": "github",
-      "owner": "govll",
+      "owner": "RectifySoftware",
       "repo": "rectify-jabre",
       "releaseType": "release"
     },

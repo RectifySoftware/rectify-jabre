@@ -1,4 +1,4 @@
-![image](https://raw.githubusercontent.com/govll/rectify-jabre/refs/heads/main/assets/logo.png)
+![image](https://raw.githubusercontent.com/RectifySoftware/rectify-jabre/refs/heads/main/assets/logo.png)
 # Rectify™ Jabre
 
 Rectify™ Jabre is a Windows desktop GDS-style travel booking terminal, built with Electron. It is based off other 
