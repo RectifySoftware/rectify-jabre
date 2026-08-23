@@ -1,9 +1,9 @@
-// Mock schedule data. Carriers are fictional (no real airline codes used).
-// AIRPORTS is a broad global IATA code set (name + approx coordinates) so any
-// city pair can be searched. A handful of major routes have curated, flavorful
-// schedules in ROUTES; every other pair falls back to a deterministic synthetic
-// schedule generated from great-circle distance, so results are stable for a
-// given origin/destination/date but still feel like a real timetable.
+// Global IATA airport reference data (name + approx coordinates) used for:
+//   - validating origin/destination codes typed into the terminal
+//   - great-circle distance, to suggest nearby alternate airports when a
+//     search comes back empty
+// This file does NOT generate or invent flights - every result the app shows
+// must come from a live provider (src/lib/searchapi.js / src/lib/apify.js).
 const AIRPORTS = {
   // North America
   ATL: ['ATLANTA', 33.6407, -84.4277], ORD: ['CHICAGO OHARE', 41.9742, -87.9073],
@@ -88,129 +88,6 @@ const AIRPORTS = {
 
 const MONTHS = ['JAN', 'FEB', 'MAR', 'APR', 'MAY', 'JUN', 'JUL', 'AUG', 'SEP', 'OCT', 'NOV', 'DEC'];
 
-const CARRIERS = ['ZR', 'QX', 'VT', 'NB'];
-
-const ROUTES = [
-  { o: 'ORD', d: 'JFK', flights: [
-    { fn: 'ZR104', dep: '0710', arr: '1002', dur: '2H52M', ac: '738', days: [0,1,2,3,4,5,6] },
-    { fn: 'QX882', dep: '1245', arr: '1538', dur: '2H53M', ac: '32N', days: [1,2,3,4,5] },
-    { fn: 'VT219', dep: '1830', arr: '2121', dur: '2H51M', ac: '73H', days: [0,1,2,3,4,5,6] }
-  ]},
-  { o: 'JFK', d: 'ORD', flights: [
-    { fn: 'ZR105', dep: '0800', arr: '0942', dur: '2H42M', ac: '738', days: [0,1,2,3,4,5,6] },
-    { fn: 'NB471', dep: '1620', arr: '1801', dur: '2H41M', ac: 'E75', days: [1,2,3,4,5,6] }
-  ]},
-  { o: 'ORD', d: 'LAX', flights: [
-    { fn: 'QX310', dep: '0900', arr: '1128', dur: '4H28M', ac: '32N', days: [0,1,2,3,4,5,6] },
-    { fn: 'ZR552', dep: '1710', arr: '1938', dur: '4H28M', ac: '789', days: [0,2,4,6] }
-  ]},
-  { o: 'LAX', d: 'ORD', flights: [
-    { fn: 'QX311', dep: '1305', arr: '1912', dur: '4H07M', ac: '32N', days: [0,1,2,3,4,5,6] }
-  ]},
-  { o: 'DFW', d: 'ATL', flights: [
-    { fn: 'VT640', dep: '0640', arr: '0925', dur: '1H45M', ac: '73H', days: [1,2,3,4,5] },
-    { fn: 'NB118', dep: '1415', arr: '1700', dur: '1H45M', ac: 'E75', days: [0,1,2,3,4,5,6] }
-  ]},
-  { o: 'ATL', d: 'DFW', flights: [
-    { fn: 'VT641', dep: '1010', arr: '1112', dur: '2H02M', ac: '73H', days: [1,2,3,4,5] }
-  ]},
-  { o: 'MIA', d: 'JFK', flights: [
-    { fn: 'ZR822', dep: '0730', arr: '1025', dur: '2H55M', ac: '320', days: [0,1,2,3,4,5,6] },
-    { fn: 'QX905', dep: '1940', arr: '2233', dur: '2H53M', ac: '32N', days: [0,3,5] }
-  ]},
-  { o: 'SEA', d: 'DEN', flights: [
-    { fn: 'NB233', dep: '0855', arr: '1225', dur: '2H30M', ac: 'E75', days: [0,1,2,3,4,5,6] }
-  ]},
-  { o: 'ORD', d: 'LHR', flights: [
-    { fn: 'VT002', dep: '1855', arr: '0840', dur: '7H45M', ac: '772', days: [0,1,2,3,4,5,6] }
-  ]},
-  { o: 'JFK', d: 'CDG', flights: [
-    { fn: 'ZR010', dep: '2010', arr: '0925', dur: '7H15M', ac: '789', days: [0,1,2,3,4,5,6] }
-  ]},
-  { o: 'SFO', d: 'BOS', flights: [
-    { fn: 'QX477', dep: '0810', arr: '1635', dur: '5H25M', ac: '32N', days: [1,2,3,4,5] }
-  ]}
-];
-
-const FARE_TEMPLATE = [
-  { code: 'Y', label: 'FULL Y', base: 620 },
-  { code: 'B', label: 'FLEX B', base: 410 },
-  { code: 'M', label: 'SAVER M', base: 268 },
-  { code: 'Q', label: 'DEEP Q', base: 179 }
-];
-
-function seededRand(seed) {
-  const x = Math.sin(seed) * 10000;
-  return x - Math.floor(x);
-}
-function seededSeats(seed) {
-  return Math.max(0, Math.min(9, Math.floor(seededRand(seed) * 10)));
-}
-function strSeed(str) {
-  let h = 0;
-  for (let i = 0; i < str.length; i++) h = (h * 31 + str.charCodeAt(i)) % 100000;
-  return h;
-}
-
-function haversineKm(a, b) {
-  const [, lat1, lon1] = a, [, lat2, lon2] = b;
-  const R = 6371;
-  const toRad = (d) => (d * Math.PI) / 180;
-  const dLat = toRad(lat2 - lat1);
-  const dLon = toRad(lon2 - lon1);
-  const h = Math.sin(dLat / 2) ** 2 + Math.cos(toRad(lat1)) * Math.cos(toRad(lat2)) * Math.sin(dLon / 2) ** 2;
-  return R * 2 * Math.atan2(Math.sqrt(h), Math.sqrt(1 - h));
-}
-
-function minutesToHM(mins) {
-  const h = Math.floor(mins / 60);
-  const m = Math.round(mins % 60);
-  return `${h}H${String(m).padStart(2, '0')}M`;
-}
-function addMinutesToClock(startMins, durMins) {
-  const total = (startMins + durMins) % (24 * 60);
-  const h = Math.floor(total / 60);
-  const m = Math.round(total % 60);
-  return `${String(h).padStart(2, '0')}${String(m).padStart(2, '0')}`;
-}
-function fmtClock(mins) {
-  const h = Math.floor(mins / 60);
-  const m = Math.round(mins % 60);
-  return `${String(h).padStart(2, '0')}${String(m).padStart(2, '0')}`;
-}
-
-function aircraftForDistance(km, seed) {
-  if (km < 1200) return seededRand(seed) > 0.5 ? 'E75' : 'CRJ9';
-  if (km < 4200) return ['738', '32N', '73H', '320'][Math.floor(seededRand(seed) * 4)];
-  return ['789', '772', '359', '388'][Math.floor(seededRand(seed) * 4)];
-}
-
-function generateFlights(origin, dest, dayCode, dateLabel) {
-  const oInfo = AIRPORTS[origin], dInfo = AIRPORTS[dest];
-  const distKm = haversineKm(oInfo, dInfo);
-  const baseSeed = strSeed(`${origin}${dest}${dayCode}`);
-  const numFlights = distKm > 6000 ? 1 : (seededRand(baseSeed) > 0.45 ? 2 : 1);
-
-  const flights = [];
-  for (let i = 0; i < numFlights; i++) {
-    const seed = baseSeed + i * 17.3;
-    const durMins = Math.max(40, Math.round((distKm / 830) * 60) + 28 + Math.round(seededRand(seed + 1) * 12));
-    const depMins = 300 + Math.floor(seededRand(seed + 2) * 1050); // 05:00 - 22:30
-    const carrier = CARRIERS[Math.floor(seededRand(seed + 3) * CARRIERS.length)];
-    const fn = carrier + (100 + Math.floor(seededRand(seed + 4) * 899));
-    const aircraft = aircraftForDistance(distKm, seed + 5);
-    flights.push({
-      fn,
-      dep: fmtClock(depMins),
-      arr: addMinutesToClock(depMins, durMins),
-      dur: minutesToHM(durMins),
-      ac: aircraft,
-      distKm
-    });
-  }
-  return flights;
-}
-
 function parseDDMMM(str, now = new Date()) {
   const m = /^(\d{1,2})([A-Z]{3})$/.exec((str || '').toUpperCase());
   if (!m) return null;
@@ -225,59 +102,55 @@ function parseDDMMM(str, now = new Date()) {
   return candidate;
 }
 
-function farePriceForDistance(base, distKm) {
-  // curated routes just use the flat FARE_TEMPLATE base; generated ones scale with distance
-  return distKm ? Math.round(base * 0.35 + distKm * 0.085 * (base / 268)) : base;
+function formatDateLabel(date) {
+  return `${String(date.getDate()).padStart(2, '0')}${MONTHS[date.getMonth()]}`;
 }
 
-function searchAvailability(origin, dest, dateStr) {
+// This only checks the codes *look* like IATA airport codes (3 letters).
+// It deliberately does NOT require membership in the local AIRPORTS dataset
+// below - that list is a few hundred major airports used for computing
+// alternate-airport suggestions, not an exhaustive directory. The live
+// provider (SearchAPI/Apify) is the real authority on whether an airport
+// actually exists and has flights; rejecting real airports just because
+// they're missing from this local list would be wrong.
+function validateAirports(origin, dest) {
   origin = (origin || '').toUpperCase();
   dest = (dest || '').toUpperCase();
-  const date = parseDDMMM(dateStr);
-  if (!date) {
-    return { ok: false, error: `INVALID DATE FORMAT "${dateStr}" - USE DDMMM (E.G. 25AUG)` };
-  }
-  if (!AIRPORTS[origin] || !AIRPORTS[dest]) {
-    return { ok: false, error: `UNKNOWN CITY/AIRPORT CODE - ${!AIRPORTS[origin] ? origin : dest}` };
+  if (!/^[A-Z]{3}$/.test(origin) || !/^[A-Z]{3}$/.test(dest)) {
+    return { ok: false, error: `INVALID AIRPORT CODE - MUST BE 3 LETTERS - ${!/^[A-Z]{3}$/.test(origin) ? origin : dest}` };
   }
   if (origin === dest) {
     return { ok: false, error: 'ORIGIN AND DESTINATION MUST BE DIFFERENT' };
   }
-  const dow = date.getDay();
-  const dateLabel = `${String(date.getDate()).padStart(2, '0')}${MONTHS[date.getMonth()]}`;
-
-  const curated = ROUTES.find((r) => r.o === origin && r.d === dest);
-  let rawFlights;
-  if (curated) {
-    rawFlights = curated.flights.filter((f) => f.days.includes(dow));
-    if (rawFlights.length === 0) {
-      return { ok: true, origin, dest, date: dateLabel, lines: [], msg: 'NO FLIGHTS OPERATE ON REQUESTED DAY' };
-    }
-  } else {
-    rawFlights = generateFlights(origin, dest, `${dow}`, dateLabel);
-  }
-
-  const lines = rawFlights.map((f, idx) => {
-    const seed = date.getTime() / 86400000 + strSeed(f.fn) + idx;
-    const fares = FARE_TEMPLATE.map((ft, fi) => ({
-      code: ft.code,
-      label: ft.label,
-      price: farePriceForDistance(ft.base, f.distKm),
-      currency: 'USD',
-      seats: seededSeats(seed + fi * 3.7)
-    }));
-    return {
-      line: idx + 1,
-      carrier: f.fn.slice(0, 2),
-      flightNumber: f.fn,
-      origin, dest,
-      dep: f.dep, arr: f.arr, dur: f.dur, aircraft: f.ac,
-      date: dateLabel,
-      fares
-    };
-  });
-
-  return { ok: true, origin, dest, date: dateLabel, lines };
+  return { ok: true };
 }
 
-module.exports = { searchAvailability, AIRPORTS };
+function haversineKm(codeA, codeB) {
+  const a = AIRPORTS[codeA], b = AIRPORTS[codeB];
+  if (!a || !b) return Infinity;
+  const [, lat1, lon1] = a, [, lat2, lon2] = b;
+  const R = 6371;
+  const toRad = (d) => (d * Math.PI) / 180;
+  const dLat = toRad(lat2 - lat1);
+  const dLon = toRad(lon2 - lon1);
+  const h = Math.sin(dLat / 2) ** 2 + Math.cos(toRad(lat1)) * Math.cos(toRad(lat2)) * Math.sin(dLon / 2) ** 2;
+  return R * 2 * Math.atan2(Math.sqrt(h), Math.sqrt(1 - h));
+}
+
+// Nearest other airports to `code` by great-circle distance, excluding itself
+// and (optionally) a code that wouldn't make a sensible suggestion (e.g. the
+// other side of the route being searched). Used to suggest "try this instead"
+// when a route genuinely has no live results.
+function nearestAirports(code, count, exclude) {
+  code = (code || '').toUpperCase();
+  if (!AIRPORTS[code]) return [];
+  const excludeSet = new Set([code, ...(exclude || [])].map((c) => (c || '').toUpperCase()));
+  return Object.keys(AIRPORTS)
+    .filter((c) => !excludeSet.has(c))
+    .map((c) => ({ code: c, distKm: haversineKm(code, c) }))
+    .sort((a, b) => a.distKm - b.distKm)
+    .slice(0, count)
+    .map((x) => x.code);
+}
+
+module.exports = { AIRPORTS, parseDDMMM, formatDateLabel, validateAirports, haversineKm, nearestAirports };

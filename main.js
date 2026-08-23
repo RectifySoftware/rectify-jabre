@@ -3,7 +3,7 @@ const path = require('path');
 const fs = require('fs');
 
 const db = require('./src/lib/store');
-const { searchAvailability } = require('./src/lib/flights');
+const { AIRPORTS, parseDDMMM, formatDateLabel, validateAirports, haversineKm, nearestAirports } = require('./src/lib/flights');
 const { buildItineraryHtml } = require('./src/lib/itinerary');
 const { fetchLiveRates } = require('./src/lib/rates');
 const { testConnection: testSearchApiConnection, searchLiveFlights: searchApiSearchLiveFlights } = require('./src/lib/searchapi');
@@ -219,54 +219,122 @@ function setLiveCache(key, data) {
 }
 
 // ---------- IPC: flights ----------
-ipcMain.handle('flights:search', async (evt, { origin, dest, date, currency }) => {
-  const settings = db.get('settings').value() || {};
-  const { searchApiKey, apifyToken } = settings;
-  const cur = currency || 'USD';
+// Every result shown to the user must come from a real live provider search -
+// nothing here ever invents a flight. If the exact request comes back empty,
+// we try a small, tightly-bounded set of nearby dates and nearby airports
+// (using real great-circle distance) and, if any of those genuinely exist,
+// return them clearly tagged as alternatives rather than exact matches.
+async function tryLiveSearch({ origin, dest, dateLabel, currency, searchApiKey, apifyToken }) {
+  const key = liveCacheKey(origin, dest, dateLabel, currency);
+  const cached = getLiveCache(key);
+  if (cached) return { ...cached.data, cached: true };
 
-  if (searchApiKey || apifyToken) {
-    const key = liveCacheKey(origin, dest, date, cur);
-    const cached = getLiveCache(key);
-    if (cached) return { ...cached.data, cached: true };
+  let lastError = null;
 
-    let lastError = null;
-
-    if (searchApiKey) {
-      try {
-        const live = await searchApiSearchLiveFlights({ apiKey: searchApiKey, origin, dest, dateLabel: date, currency: cur });
-        if (live.lines.length > 0) {
-          setLiveCache(key, live);
-          return { ...live, cached: false };
-        }
-      } catch (e) {
-        lastError = `SEARCHAPI: ${e.message}`;
+  if (searchApiKey) {
+    try {
+      const live = await searchApiSearchLiveFlights({ apiKey: searchApiKey, origin, dest, dateLabel, currency });
+      if (live.lines.length > 0) {
+        setLiveCache(key, live);
+        return { ...live, cached: false };
       }
+    } catch (e) {
+      lastError = `SEARCHAPI: ${e.message}`;
     }
-
-    if (apifyToken) {
-      try {
-        const live = await apifySearchLiveFlights({ token: apifyToken, origin, dest, dateLabel: date, currency: cur });
-        if (live.lines.length > 0) {
-          setLiveCache(key, live);
-          return { ...live, cached: false };
-        }
-      } catch (e) {
-        lastError = lastError ? `${lastError} | APIFY: ${e.message}` : `APIFY: ${e.message}`;
-      }
-    }
-
-    // both configured providers either failed or had nothing for this route/date
-    const mock = searchAvailability(origin, dest, date);
-    if (mock.ok) {
-      mock.source = 'SIMULATED';
-      if (lastError) mock.liveError = lastError;
-    }
-    return mock;
   }
 
-  const mock = searchAvailability(origin, dest, date);
-  if (mock.ok) mock.source = 'MOCK';
-  return mock;
+  if (apifyToken) {
+    try {
+      const live = await apifySearchLiveFlights({ token: apifyToken, origin, dest, dateLabel, currency });
+      if (live.lines.length > 0) {
+        setLiveCache(key, live);
+        return { ...live, cached: false };
+      }
+    } catch (e) {
+      lastError = lastError ? `${lastError} | APIFY: ${e.message}` : `APIFY: ${e.message}`;
+    }
+  }
+
+  return { ok: true, origin, dest, date: dateLabel, lines: [], liveError: lastError };
+}
+
+ipcMain.handle('flights:search', async (evt, { origin, dest, date, currency }) => {
+  origin = (origin || '').toUpperCase();
+  dest = (dest || '').toUpperCase();
+  const cur = currency || 'USD';
+
+  const settings = db.get('settings').value() || {};
+  const { searchApiKey, apifyToken } = settings;
+  if (!searchApiKey && !apifyToken) {
+    return { ok: false, error: 'NO LIVE DATA SOURCE CONFIGURED - CONNECT SEARCHAPI OR APIFY IN TOOLS > LIVE DATA SETTINGS TO SEARCH REAL FLIGHTS' };
+  }
+
+  const airportCheck = validateAirports(origin, dest);
+  if (!airportCheck.ok) return airportCheck;
+
+  const parsedDate = parseDDMMM(date);
+  if (!parsedDate) {
+    return { ok: false, error: `INVALID DATE FORMAT "${date}" - USE DDMMM (E.G. 25AUG)` };
+  }
+  const dateLabel = formatDateLabel(parsedDate);
+
+  const providers = { searchApiKey, apifyToken };
+  const primary = await tryLiveSearch({ origin, dest, dateLabel, currency: cur, ...providers });
+  if (primary.lines.length > 0) return primary;
+
+  // ---- nearby dates: cheap first check, +/-1 then +/-2 days, stop at first hit ----
+  const altDateLines = [];
+  for (const offset of [-1, 1, -2, 2]) {
+    if (altDateLines.length > 0) break;
+    const candidate = new Date(parsedDate);
+    candidate.setDate(candidate.getDate() + offset);
+    const label = formatDateLabel(candidate);
+    const res = await tryLiveSearch({ origin, dest, dateLabel: label, currency: cur, ...providers });
+    if (res.lines.length > 0) {
+      res.lines.forEach((l) => { l.alt = 'DATE'; l.altNote = `${label} instead of ${dateLabel}`; });
+      altDateLines.push(...res.lines);
+    }
+  }
+
+  // ---- nearby airports: only bother if date-shifting found nothing ----
+  const altAirportLines = [];
+  if (altDateLines.length === 0) {
+    const originAlts = nearestAirports(origin, 1, [dest]);
+    const destAlts = nearestAirports(dest, 1, [origin]);
+    for (const o of originAlts) {
+      const res = await tryLiveSearch({ origin: o, dest, dateLabel, currency: cur, ...providers });
+      if (res.lines.length > 0) {
+        const distKm = Math.round(haversineKm(origin, o));
+        const name = AIRPORTS[o] ? AIRPORTS[o][0] : o;
+        res.lines.forEach((l) => { l.alt = 'ORIGIN'; l.altNote = `FROM ${o} - ${name} (${distKm}KM FROM ${origin}) INSTEAD OF ${origin}`; });
+        altAirportLines.push(...res.lines);
+      }
+    }
+    for (const d of destAlts) {
+      const res = await tryLiveSearch({ origin, dest: d, dateLabel, currency: cur, ...providers });
+      if (res.lines.length > 0) {
+        const distKm = Math.round(haversineKm(dest, d));
+        const name = AIRPORTS[d] ? AIRPORTS[d][0] : d;
+        res.lines.forEach((l) => { l.alt = 'DEST'; l.altNote = `TO ${d} - ${name} (${distKm}KM FROM ${dest}) INSTEAD OF ${dest}`; });
+        altAirportLines.push(...res.lines);
+      }
+    }
+  }
+
+  const altLines = [...altDateLines, ...altAirportLines];
+  const finalResult = {
+    ok: true,
+    origin, dest, date: dateLabel,
+    lines: altLines.map((l, idx) => ({ ...l, line: idx + 1 })),
+    source: 'LIVE',
+    liveError: primary.liveError,
+    msg: altLines.length === 0
+      ? 'NO FLIGHTS FOUND FOR THIS ROUTE, NEARBY DATES, OR NEARBY AIRPORTS'
+      : undefined
+  };
+  const finalKey = liveCacheKey(origin, dest, dateLabel, cur);
+  setLiveCache(finalKey, finalResult);
+  return finalResult;
 });
 
 // ---------- IPC: settings / live data connection ----------

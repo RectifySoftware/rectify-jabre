@@ -120,6 +120,17 @@ table.data-table tbody tr:hover { background: #f6d9d6; }
 .fare-cell.low-seats { color: var(--red-dark); font-weight: bold; }
 .fare-cell.no-seats { color: #999; text-decoration: line-through; }
 
+.alt-banner {
+  background: #fdf1cf; border-bottom: 1px solid #e0b64a; border-top: 1px solid #e0b64a;
+  color: #6b4c00; font-family: var(--font-mono); font-size: 11px; font-weight: bold;
+  padding: 6px 8px;
+}
+table.data-table tbody tr.alt-row { background: #fdf1cf; }
+table.data-table tbody tr.alt-row:nth-child(even) { background: #fbe8b8; }
+table.data-table tbody tr.alt-row:hover { background: #f7dd97; }
+table.data-table tbody tr.alt-row td { border-color: #e0c07a; }
+.alt-cell { color: #6b4c00; font-weight: bold; white-space: nowrap; }
+
 .welcome { color: #555; font-family: var(--font-mono); font-size: 12px; line-height: 1.7; padding: 20px; }
 .welcome b { color: var(--red-dark); }
 

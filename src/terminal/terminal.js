@@ -230,19 +230,15 @@ function fareCellClass(seats) {
   return 'has-seats';
 }
 
-function sourceLabel(source, cached) {
-  if (source === 'LIVE') return cached ? '[LIVE - REAL AIRLINE DATA, CACHED]' : '[LIVE - REAL AIRLINE DATA]';
-  if (source === 'SIMULATED') return '[SIMULATED - NO LIVE FARE FOUND]';
-  return '[MOCK DATA]';
+function sourceLabel(cached) {
+  return cached ? '[LIVE - REAL AIRLINE DATA, CACHED]' : '[LIVE - REAL AIRLINE DATA]';
 }
-function sourceBadge(source, cached) {
-  if (source === 'LIVE') return `<span style="color:#1c5c22;font-weight:bold;">${cached ? '[LIVE - REAL AIRLINE DATA, CACHED]' : '[LIVE - REAL AIRLINE DATA]'}</span>`;
-  if (source === 'SIMULATED') return '<span style="color:var(--red-dark);font-weight:bold;">[SIMULATED - NO LIVE FARE FOUND]</span>';
-  return '<span style="color:#777;">[MOCK DATA]</span>';
+function sourceBadge(cached) {
+  return `<span style="color:#1c5c22;font-weight:bold;">${sourceLabel(cached)}</span>`;
 }
 
 function renderAvailabilityBlock(av) {
-  const head = `AVAILABILITY ${av.origin}-${av.dest} ${av.date} ${sourceBadge(av.source, av.cached)}`;
+  const head = `AVAILABILITY ${av.origin}-${av.dest} ${av.date} ${sourceBadge(av.cached)}`;
   if (!av.lines || av.lines.length === 0) {
     const liveErrLine = av.liveError ? `<div style="padding:0 10px 8px;font-family:var(--font-mono);font-size:11px;color:#999;">LIVE LOOKUP FAILED: ${escapeHtml(av.liveError)}</div>` : '';
     return `<div class="panel-block">
@@ -251,28 +247,33 @@ function renderAvailabilityBlock(av) {
       ${liveErrLine}
     </div>`;
   }
-  const isLive = av.source === 'LIVE';
-  const fareCodes = isLive ? ['FARE'] : av.lines[0].fares.map((f) => f.code);
+  const hasAlts = av.lines.some((l) => l.alt);
   const rows = av.lines.map((l) => {
-    const fareCells = isLive
-      ? l.fares.map((f) => `<td class="fare-cell has-seats" title="CLASS ${f.code} - ${f.label}">${formatMoney(f.price, f.currency)}</td>`).join('')
-      : l.fares.map((f) => `<td class="fare-cell ${fareCellClass(f.seats)}" title="${formatMoney(f.price, f.currency)}">${f.code}${f.seats}</td>`).join('');
+    const fareCells = l.fares.map((f) => `<td class="fare-cell has-seats" title="CLASS ${f.code} - ${f.label}">${formatMoney(f.price, f.currency)}</td>`).join('');
     const carrierTitle = l.carrierName ? ` title="${escapeHtml(l.carrierName)}${l.aircraftName ? ' - ' + escapeHtml(l.aircraftName) : ''}"` : '';
     const stopsLabel = l.stops ? `${l.stops} STOP${l.stops > 1 ? 'S' : ''}` : 'NONSTOP';
-    return `<tr>
+    const rowClass = l.alt ? ' class="alt-row"' : '';
+    const altCell = hasAlts ? `<td class="alt-cell">${l.alt ? `&#9888; ${escapeHtml(l.altNote || 'ALTERNATIVE')}` : ''}</td>` : '';
+    return `<tr${rowClass}>
       <td>${l.line}</td>
       <td${carrierTitle}>${l.carrier} ${l.flightNumber.replace(l.carrier, '')}</td>
       <td>${l.origin}</td><td>${l.dest}</td>
       <td>${l.dep}</td><td>${l.arr}</td><td>${l.dur}</td><td>${stopsLabel}</td><td>${l.aircraft}</td>
       ${fareCells}
+      ${altCell}
     </tr>`;
   }).join('');
+  const altBanner = hasAlts
+    ? `<div class="alt-banner">&#9888; NO EXACT MATCH FOR ${av.origin}-${av.dest} ${av.date} - SHOWING NEAREST ALTERNATIVES BELOW (HIGHLIGHTED)</div>`
+    : '';
   return `<div class="panel-block">
     <div class="panel-block-head">${head}</div>
+    ${altBanner}
     <table class="data-table">
       <thead><tr>
         <th>LN</th><th>FLT</th><th>ORG</th><th>DST</th><th>DEP</th><th>ARR</th><th>ELPD</th><th>STOPS</th><th>EQP</th>
-        ${fareCodes.map((c) => `<th>${c}</th>`).join('')}
+        <th>FARE</th>
+        ${hasAlts ? '<th>ALT</th>' : ''}
       </tr></thead>
       <tbody>${rows}</tbody>
     </table>
@@ -391,10 +392,15 @@ async function cmdAvailability(tab, upper) {
   tab.availability = res;
   tab.lastSearch = { origin, dest, date };
   if (res.lines.length === 0) {
-    logLine(tab, `${sourceLabel(res.source, res.cached)} ${res.msg || 'NO AVAILABILITY'}`, 'err');
+    logLine(tab, res.msg || 'NO AVAILABILITY', 'err');
     if (res.liveError) logLine(tab, 'LIVE LOOKUP FAILED: ' + res.liveError, 'sys');
   } else {
-    logLine(tab, `${sourceLabel(res.source, res.cached)} ${res.lines.length} OPTION(S) - ${origin}-${dest} ${res.date}`, 'ok');
+    const altCount = res.lines.filter((l) => l.alt).length;
+    if (altCount > 0) {
+      logLine(tab, `NO EXACT MATCH - SHOWING ${altCount} ALTERNATIVE(S) INSTEAD (SEE HIGHLIGHTED ROWS)`, 'err');
+    } else {
+      logLine(tab, `${sourceLabel(res.cached)} ${res.lines.length} OPTION(S) - ${origin}-${dest} ${res.date}`, 'ok');
+    }
   }
   renderWorkspace();
 }
@@ -598,11 +604,12 @@ function showHelp() {
   const fkeys = FKEY_ROWS.map(([c, d]) => `<tr><td class="cmd">${c}</td><td>${d}</td></tr>`).join('');
   body.innerHTML = `<table>${rows}</table><div style="margin:10px 0 4px;color:#888;">FUNCTION KEYS</div><table>${fkeys}</table>
     <div style="margin-top:12px;padding-top:10px;border-top:1px solid #333;color:#888;">
-      By default <b style="color:var(--red-bright);">A</b> uses simulated flight data.
-      Go to <b>Tools &gt; Live Data Settings...</b> and add a free SearchAPI.io key
-      and/or a pay-per-use Apify token to search real airline fares instead -
-      results are tagged <b>[LIVE]</b> (optionally <b>CACHED</b>), <b>[SIMULATED]</b>,
-      or <b>[MOCK]</b> so you always know which you're looking at.
+      <b style="color:var(--red-bright);">A</b> only ever shows real flights - nothing is
+      ever invented. Go to <b>Tools &gt; Live Data Settings...</b> and connect a free
+      SearchAPI.io key and/or a pay-per-use Apify token first, or searches will be
+      refused with an error telling you to connect one. If your exact search comes up
+      empty, the terminal automatically tries nearby dates and nearby airports and
+      shows any real results it finds, clearly highlighted as alternatives.
     </div>`;
   document.getElementById('helpBackdrop').classList.add('show');
 }
@@ -657,9 +664,9 @@ function bindSettingsModal() {
     await window.rj.clearSettings();
     document.getElementById('setSearchApiKey').value = '';
     document.getElementById('setApifyToken').value = '';
-    setSettingsStatus('CLEARED - "A" SEARCHES WILL USE SIMULATED DATA ONLY.', 'ok');
+    setSettingsStatus('CLEARED - "A" SEARCHES WILL BE REFUSED UNTIL A PROVIDER IS RECONNECTED.', 'ok');
     const t = activeTab();
-    if (t) logLine(t, 'LIVE DATA SETTINGS CLEARED - BACK TO SIMULATED DATA', 'sys');
+    if (t) logLine(t, 'LIVE DATA SETTINGS CLEARED - NO LIVE PROVIDER CONFIGURED', 'sys');
   });
   document.getElementById('testSearchApiBtn').addEventListener('click', async () => {
     setSettingsStatus('TESTING SEARCHAPI.IO (USES 1 FREE REQUEST)...', '');

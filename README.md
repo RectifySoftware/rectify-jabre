@@ -36,8 +36,8 @@ building — both are placeholder-generated sphere graphics right now
 PNRs, agent profiles, API settings, and the 24h live-fare cache are all stored
 locally in a JSON file (via `lowdb`) inside Electron's per-user `userData`
 directory, so bookings survive closing and reopening the app. Flight
-schedule/fare data is a static mock dataset in `src/lib/flights.js` by
-default — see **Live airline data** below for real fares.
+availability is never fabricated — see **Live airline data** below; a live
+provider must be connected before `A` will return anything.
 
 ## Command set
 
@@ -62,15 +62,12 @@ to focus it). All commands are case-insensitive.
 | `CC` | List all available currency codes |
 | `HELP` | Show the full command reference in-app |
 
-Airport coverage is global — around 140 IATA codes across North & South
-America, Europe, the Middle East, Africa, Asia and Oceania are recognized (see
-`AIRPORTS` in `src/lib/flights.js`). A handful of major city pairs (e.g.
-`ORD-JFK`, `JFK-ORD`, `ORD-LAX`, `ORD-LHR`, `JFK-CDG`...) have curated,
-flavorful timetables; every other valid pair falls back to a deterministic
-synthetic schedule computed from great-circle distance (flight time, aircraft
-type, and fare all scale with distance), so any recognized origin/destination
-combination — e.g. `ALGWLBA27AUG` — returns a plausible result instead of
-"no service found". Only unrecognized IATA codes return an error.
+Any syntactically valid 3-letter IATA code is accepted as origin/destination —
+there's no local "known airports" gate, since the live provider is the real
+authority on whether an airport exists and has flights, not a hand-maintained
+list here. A small dataset of ~140 major airports (with coordinates) is kept
+in `src/lib/flights.js` purely to power the alternate-airport suggestions
+described below.
 
 ### Example booking flow
 
@@ -102,8 +99,10 @@ WP                    print itinerary to PDF
 
 ## Live airline data
 
-By default `A` searches use the built-in synthetic schedule. To pull **real
-airline data** — real carriers, real flight numbers, real fares — open
+**Every result `A` shows is a genuine live search result — nothing is ever
+invented.** There is no offline/mock/simulated mode: if no live provider is
+connected, `A` refuses the search outright with an error telling you to
+connect one, rather than making something up. Open
 **Tools > Live Data Settings...** and connect one or both of:
 
 1. **[SearchAPI.io](https://www.searchapi.io/users/sign_up)** (tried first) —
@@ -135,11 +134,30 @@ Results are always labeled so you know what you're looking at:
   real flight number, real fare, priced in whatever currency you currently
   have selected (`CC`). Add `, CACHED` when served from the local cache
   instead of a fresh request.
-- **`[SIMULATED - NO LIVE FARE FOUND]`** — every configured live provider
-  either had nothing for that route/date or the request failed (e.g. quota
-  exhausted), so the synthetic generator filled in instead. Check the log
-  line under it for the specific error.
-- **`[MOCK DATA]`** — no API key/token configured at all; always synthetic.
+
+### When there's no exact match
+
+If your exact route/date search comes back empty, the terminal automatically
+does a small, tightly-bounded search for real alternatives before giving up —
+it never fabricates a result to fill the gap:
+
+1. **Nearby dates** — tries ±1 and ±2 days from your requested date (stopping
+   at the first day that has real results), in case the route exists but just
+   doesn't operate that day.
+2. **Nearby airports** — only if no nearby date worked, tries the single
+   closest alternate airport (by real great-circle distance) to your origin,
+   then to your destination, at your original date — e.g. searching `LBA-FAO`
+   with nothing found might turn up a real result from `MAN-FAO` instead.
+3. If genuinely nothing turns up anywhere, it says so plainly:
+   `NO FLIGHTS FOUND FOR THIS ROUTE, NEARBY DATES, OR NEARBY AIRPORTS`.
+
+Any alternative shown is **clearly marked and highlighted** — a distinct
+amber-highlighted row with an `ALT` column explaining exactly what changed
+(e.g. `25AUG instead of 24AUG`, or `FROM MAN - MANCHESTER (62KM FROM LBA)
+INSTEAD OF LBA`) — plus a banner above the table so it's impossible to
+mistake an alternative for what you actually asked for. You can still `S<line>`
+an alternative directly; the segment gets sold using its real (alternate)
+route/date, not your original request.
 
 This genuinely mirrors real-world pricing, good enough to hand someone an
 actual "here's what that flight costs" quote — it is not, however, a
@@ -154,14 +172,14 @@ portal now serves enterprise customers only, so it's no longer an option.
 Kiwi's Tequila API also closed to new self-serve developers.)
 
 Clear both keys any time with **Tools > Live Data Settings... > Clear Both /
-Use Simulated Data** to go back to fully offline mock data.
+Use Simulated Data** — searches will then be refused until a provider is
+reconnected.
 
 ## Currency
 
-Mock/simulated fares are priced in USD internally; live Google Flights fares are
-requested directly in whatever currency is currently selected, then
-everything is converted on the fly (pivoting through USD) whenever you switch.
-The
+Live fares are requested directly in whatever currency is currently selected,
+then everything is converted on the fly (pivoting through USD) whenever you
+switch. The
 `CUR:` indicator in the status bar shows the currently selected display
 currency — click it, use `Tools > Change Currency...`, press **F11**, or type
 `CC<CODE>` (e.g. `CCEUR`, `CCGBP`, `CCJPY`) to switch. Every switch pulls live
@@ -170,7 +188,7 @@ mid-market rates from the free [Frankfurter](https://www.frankfurter.app/) API
 moment, so displayed fares track actual currency strength in real time. Rates
 are cached locally after each successful fetch — if the app is offline, it
 falls back to the last known rates and marks the status bar `(CACHED)`. This
-only changes how mock fares are *displayed and printed*; no real payment or
+only changes how fares are *displayed and printed*; no real payment or
 transaction ever occurs.
 
 ## Project layout
@@ -179,7 +197,7 @@ transaction ever occurs.
 main.js                 Electron main process (windows, IPC, PDF export)
 preload.js               contextBridge API exposed to renderers as window.rj
 src/lib/store.js         lowdb-backed local persistence (agents, PNRs, settings)
-src/lib/flights.js       mock/synthetic flight schedule/fare dataset + search
+src/lib/flights.js       airport reference data + distance/date helpers (no mock flights)
 src/lib/searchapi.js     live Google Flights search integration (via SearchAPI.io)
 src/lib/apify.js         live multi-source fare-scraper integration (via Apify)
 src/lib/rates.js         live FX rate fetch (Frankfurter API)
