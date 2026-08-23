@@ -12,6 +12,8 @@ contextBridge.exposeInMainWorld('rj', {
 
   getRates: () => ipcRenderer.invoke('currency:getRates'),
 
+  searchAirports: (query) => ipcRenderer.invoke('airports:search', query),
+
   getSettings: () => ipcRenderer.invoke('settings:get'),
   saveSettings: (settings) => ipcRenderer.invoke('settings:save', settings),
   clearSettings: () => ipcRenderer.invoke('settings:clear'),

@@ -4,6 +4,7 @@ const fs = require('fs');
 
 const db = require('./src/lib/store');
 const { AIRPORTS, parseDDMMM, formatDateLabel, validateAirports, haversineKm, nearestAirports } = require('./src/lib/flights');
+const { search: searchAirportsByText } = require('./src/lib/airport-lookup');
 const { buildItineraryHtml } = require('./src/lib/itinerary');
 const { fetchLiveRates } = require('./src/lib/rates');
 const { testConnection: testSearchApiConnection, searchLiveFlights: searchApiSearchLiveFlights } = require('./src/lib/searchapi');
@@ -408,6 +409,11 @@ ipcMain.handle('shell:openExternal', (evt, url) => {
     return { ok: true };
   }
   return { ok: false, error: 'URL NOT ALLOWED' };
+});
+
+// ---------- IPC: airport/IATA code lookup ----------
+ipcMain.handle('airports:search', (evt, query) => {
+  return searchAirportsByText(query, 30);
 });
 
 // ---------- IPC: currency ----------

@@ -204,6 +204,10 @@ function renderWorkspace() {
 
   let html = '';
 
+  if (tab.airportLookup) {
+    html += renderAirportLookupBlock(tab.airportLookup);
+  }
+
   if (tab.availability && tab.availability.lines) {
     html += renderAvailabilityBlock(tab.availability);
   }
@@ -217,6 +221,7 @@ function renderWorkspace() {
 RECTIFY JABRE TERMINAL - WORKSPACE ${escapeHtml(tab.title)}<br><br>
 No active display. Enter a command below, e.g.:<br>
 &nbsp;&nbsp;<b>AORDJFK25AUG</b>  - search availability CHI to NYC<br>
+&nbsp;&nbsp;<b>DA LEEDS</b>      - look up IATA codes for "Leeds"<br>
 &nbsp;&nbsp;<b>HELP</b>          - full command reference<br>
 </div>`;
   }
@@ -235,6 +240,32 @@ function sourceLabel(cached) {
 }
 function sourceBadge(cached) {
   return `<span style="color:#1c5c22;font-weight:bold;">${sourceLabel(cached)}</span>`;
+}
+
+function renderAirportLookupBlock(data) {
+  if (!data.results || data.results.length === 0) {
+    return `<div class="panel-block">
+      <div class="panel-block-head">IATA CODE LOOKUP - "${escapeHtml(data.query)}"</div>
+      <div style="padding:10px;font-family:var(--font-mono);font-size:12px;">NO AIRPORTS MATCHED "${escapeHtml(data.query)}" - TRY A CITY, COUNTRY, OR PARTIAL AIRPORT NAME</div>
+    </div>`;
+  }
+  const rows = data.results.map((a) => `<tr>
+    <td><b>${a.iata}</b></td>
+    <td>${escapeHtml(a.name)}</td>
+    <td>${escapeHtml(a.city || '')}</td>
+    <td>${escapeHtml(a.countryName || a.country || '')}</td>
+  </tr>`).join('');
+  const moreNote = data.total > data.results.length
+    ? `<div style="padding:4px 8px;font-family:var(--font-mono);font-size:11px;color:#777;">SHOWING ${data.results.length} OF ${data.total} MATCHES - NARROW YOUR SEARCH FOR MORE PRECISE RESULTS</div>`
+    : '';
+  return `<div class="panel-block">
+    <div class="panel-block-head">IATA CODE LOOKUP - "${escapeHtml(data.query)}" (${data.total} MATCH${data.total === 1 ? '' : 'ES'})</div>
+    <table class="data-table">
+      <thead><tr><th>CODE</th><th>AIRPORT</th><th>CITY</th><th>COUNTRY</th></tr></thead>
+      <tbody>${rows}</tbody>
+    </table>
+    ${moreNote}
+  </div>`;
 }
 
 function renderAvailabilityBlock(av) {
@@ -372,6 +403,7 @@ async function runCommand(raw) {
     if (upper === 'I' || upper === 'IR') return cmdDisplay(tab);
     if (upper === 'SI') return cmdSignOut(tab);
     if (/^CC/.test(upper)) return cmdCurrency(tab, upper.slice(2));
+    if (/^DA\s+/.test(upper)) return cmdAirportLookup(tab, cmd.trim().slice(2).trim());
     if (/^NM\d*/.test(upper)) return cmdName(tab, cmd);
     if (/^S\d+/.test(upper)) return cmdSell(tab, upper);
     if (/^A[A-Z]{6}\d{1,2}[A-Z]{3}$/.test(upper)) return cmdAvailability(tab, upper);
@@ -380,6 +412,18 @@ async function runCommand(raw) {
   } catch (e) {
     logLine(tab, 'SYSTEM ERROR - ' + e.message, 'err');
   }
+}
+
+async function cmdAirportLookup(tab, query) {
+  if (!query) { logLine(tab, 'FORMAT: DA <CITY, COUNTRY, OR AIRPORT NAME> E.G. DA LEEDS OR DA PORTUGAL', 'err'); return; }
+  const data = await window.rj.searchAirports(query);
+  tab.airportLookup = data;
+  if (data.total === 0) {
+    logLine(tab, `NO AIRPORTS MATCHED "${query}"`, 'err');
+  } else {
+    logLine(tab, `IATA LOOKUP - ${data.total} MATCH${data.total === 1 ? '' : 'ES'} FOR "${query}"${data.total > data.results.length ? ` (SHOWING ${data.results.length})` : ''}`, 'ok');
+  }
+  renderWorkspace();
 }
 
 async function cmdAvailability(tab, upper) {
@@ -574,6 +618,7 @@ function cmdSignOut(tab) {
 // Help modal
 // ---------------------------------------------------------------------------
 const HELP_ROWS = [
+  ['DA <CITY/COUNTRY/NAME>', 'Look up IATA airport codes. e.g. DA LEEDS or DA PORTUGAL'],
   ['A<ORIG><DEST><DDMMM>', 'Search flight availability. e.g. AORDJFK25AUG'],
   ['S<line>[class]', 'Sell a segment from displayed availability. e.g. S2 or S2M'],
   ['NM1<LAST>/<FIRST> [TITLE]', 'Add a passenger name. e.g. NM1SMITH/JOHN MR'],
@@ -703,6 +748,7 @@ const MENUS = {
     { label: 'Refresh Queue', kbd: '', action: () => refreshQueue() }
   ],
   booking: [
+    { label: 'IATA Code Lookup...', kbd: '', action: () => promptFor('Enter: DA <city, country, or airport name> e.g. DA LEEDS:') },
     { label: 'Availability Search...', kbd: '', action: () => promptFor('Enter availability command, e.g. AORDJFK25AUG:') },
     { label: 'Add Passenger Name...', kbd: '', action: () => promptFor('Enter name command, e.g. NM1SMITH/JOHN:') },
     { label: 'Price Itinerary', kbd: 'F6', action: () => runCommand('FXP') },

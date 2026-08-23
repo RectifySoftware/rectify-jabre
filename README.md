@@ -46,6 +46,7 @@ to focus it). All commands are case-insensitive.
 
 | Command | Description |
 |---|---|
+| `DA <city/country/name>` | Look up IATA airport codes, e.g. `DA LEEDS` or `DA PORTUGAL` |
 | `A<ORIG><DEST><DDMMM>` | Search flight availability, e.g. `AORDJFK25AUG` |
 | `S<line>[class]` | Sell a segment from the last availability display, e.g. `S2` or `S2M` |
 | `NM1<LAST>/<FIRST> [TITLE]` | Add a passenger name, e.g. `NM1SMITH/JOHN MR` |
@@ -68,6 +69,27 @@ authority on whether an airport exists and has flights, not a hand-maintained
 list here. A small dataset of ~140 major airports (with coordinates) is kept
 in `src/lib/flights.js` purely to power the alternate-airport suggestions
 described below.
+
+### `DA` — IATA code lookup
+
+Don't know an airport's 3-letter code? `DA <text>` searches ~5,400 real
+airports with scheduled service by city, country, or airport name and shows
+their codes — no more digging through other websites to find one before
+typing an `A` search. It's fully offline (bundled from the
+[OurAirports](https://ourairports.com/data/) open dataset, see
+`scripts/build-airports-data.js`), so it's instant and doesn't touch your API
+quota. Examples:
+
+```
+DA LEEDS       any airport with "Leeds" in its city name (e.g. LBA)
+DA PORTUGAL    every airport in Portugal (FAO, LIS, OPO, ...)
+DA HEATHROW    matches by airport name too
+```
+
+Results are ranked (exact/whole-word city or country matches first, then
+partial matches, then airport-name matches) and capped at 30 with a note if
+there were more — a broad query like `DA UNITED STATES` will tell you how
+many total matches there were so you know to narrow it down.
 
 ### Example booking flow
 
@@ -198,6 +220,9 @@ main.js                 Electron main process (windows, IPC, PDF export)
 preload.js               contextBridge API exposed to renderers as window.rj
 src/lib/store.js         lowdb-backed local persistence (agents, PNRs, settings)
 src/lib/flights.js       airport reference data + distance/date helpers (no mock flights)
+src/lib/airport-lookup.js   IATA code search (city/country/name -> airports)
+src/lib/airports-data.json  ~5,400 real airports w/ scheduled service (OurAirports data)
+src/lib/countries.json      ISO country code -> name map, for the lookup above
 src/lib/searchapi.js     live Google Flights search integration (via SearchAPI.io)
 src/lib/apify.js         live multi-source fare-scraper integration (via Apify)
 src/lib/rates.js         live FX rate fetch (Frankfurter API)
