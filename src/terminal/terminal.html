@@ -1,0 +1,126 @@
+<!doctype html>
+<html>
+<head>
+<meta charset="utf-8">
+<title>Rectify Jabre</title>
+<link rel="stylesheet" href="../theme.css">
+<link rel="stylesheet" href="terminal.css">
+</head>
+<body>
+<div id="app">
+
+  <div class="menubar" id="menubar">
+    <div class="menu-item" data-menu="file">File</div>
+    <div class="menu-item" data-menu="edit">Edit</div>
+    <div class="menu-item" data-menu="view">View</div>
+    <div class="menu-item" data-menu="booking">Booking</div>
+    <div class="menu-item" data-menu="tools">Tools</div>
+    <div class="menu-item" data-menu="help">Help</div>
+  </div>
+
+  <div class="toolbar" id="toolbar">
+    <div class="tbtn" data-action="newtab" title="New Booking Tab (F2)">N</div>
+    <div class="tbtn" data-action="closetab" title="Close Tab (Ctrl+W)">X</div>
+    <div class="tb-sep"></div>
+    <div class="tbtn" data-action="focuscmd" title="Command Line (F3)">&gt;_</div>
+    <div class="tbtn" data-action="queue" title="Queue Review (F4)">Q</div>
+    <div class="tbtn" data-action="price" title="Price PNR (F6)">$</div>
+    <div class="tbtn" data-action="endretrieve" title="End &amp; Retrieve (F7)">ER</div>
+    <div class="tbtn" data-action="print" title="Print Itinerary (F8)">P</div>
+    <div class="tb-sep"></div>
+    <div class="tbtn" data-action="currency" title="Change Currency (F11)">$</div>
+    <div class="tb-sep"></div>
+    <div class="tbtn" data-action="help" title="Help (F1)">?</div>
+  </div>
+
+  <div class="body-split">
+    <div class="sidebar">
+      <div class="sidebar-head"><span>QUEUE / PNR LIST</span><span class="cnt" id="queueCount">0</span></div>
+      <div class="queue-list" id="queueList"></div>
+    </div>
+
+    <div class="center">
+      <div class="tabs" id="tabs"></div>
+      <div class="workspace" id="workspace"></div>
+
+      <div class="bottom-pane" id="bottomPane">
+        <div class="bottom-head">
+          <span>RESPONSE / COMMAND LOG</span>
+          <span id="bottomToggle" style="cursor:default;">[F12] COLLAPSE</span>
+        </div>
+        <div class="response-log" id="responseLog"></div>
+        <div class="cmdline-row">
+          <span class="cmdline-prompt">&gt;</span>
+          <input class="cmdline-input" id="cmdInput" autocomplete="off" spellcheck="false" placeholder="ENTER COMMAND - TYPE HELP FOR COMMAND LIST">
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="statusbar">
+    <span class="seg"><span class="dot"></span> CONNECTED</span>
+    <span class="seg">AGENT: <span id="sbAgent">--</span></span>
+    <span class="seg">DUTY: <span id="sbDuty">--</span></span>
+    <span class="seg">PCC: <span id="sbPcc">--</span></span>
+    <span class="seg" id="sbCurrencySeg" title="Change display currency (F11 or CC&lt;CODE&gt;)">CUR: <span id="sbCurrency">USD</span></span>
+    <span class="spacer"></span>
+    <span class="seg">PNR: <span class="locator" id="sbLocator">---</span></span>
+    <span class="seg" id="sbClock">00:00:00</span>
+  </div>
+
+</div>
+
+<div class="modal-backdrop" id="helpBackdrop">
+  <div class="modal">
+    <div class="modal-head"><span>COMMAND REFERENCE</span><span class="x" id="helpClose">CLOSE [X]</span></div>
+    <div class="modal-body" id="helpBody"></div>
+  </div>
+</div>
+
+<div class="modal-backdrop" id="settingsBackdrop">
+  <div class="modal">
+    <div class="modal-head"><span>LIVE DATA SETTINGS</span><span class="x" id="settingsClose">CLOSE [X]</span></div>
+    <div class="modal-body">
+      <p>By default the <b>A</b> command uses a locally simulated schedule. Connect either
+      (or both) of the providers below for real airline data instead. Results are cached
+      locally for 24h per route/date/currency, so repeat searches don't burn quota twice.</p>
+
+      <div class="settings-section">
+        <div class="settings-section-head">1. SEARCHAPI.IO - GOOGLE FLIGHTS <span style="color:#888;font-weight:normal;">(tried first - free tier: 100 total requests, no card)</span></div>
+        <div class="field-row">
+          <label for="setSearchApiKey">API KEY</label>
+          <input id="setSearchApiKey" type="text" autocomplete="off" spellcheck="false">
+        </div>
+        <div class="settings-actions">
+          <button id="signupSearchApiBtn">OPEN SIGNUP PAGE</button>
+          <button id="testSearchApiBtn">TEST CONNECTION</button>
+        </div>
+      </div>
+
+      <div class="settings-section">
+        <div class="settings-section-head">2. APIFY - MULTI-SOURCE FARE SCRAPER <span style="color:#888;font-weight:normal;">(long-term backstop - pay-per-use, ~$0.0003/search, no card required to start)</span></div>
+        <p style="color:#888;margin-bottom:8px;">Used automatically once SearchAPI's free requests run out (or if only this is
+        configured). New accounts get free monthly platform credit that alone covers
+        thousands of casual searches.</p>
+        <div class="field-row">
+          <label for="setApifyToken">API TOKEN</label>
+          <input id="setApifyToken" type="text" autocomplete="off" spellcheck="false">
+        </div>
+        <div class="settings-actions">
+          <button id="signupApifyBtn">OPEN SIGNUP PAGE</button>
+          <button id="testApifyBtn">TEST CONNECTION</button>
+        </div>
+      </div>
+
+      <div class="settings-actions" style="margin-top:6px;border-top:1px solid #333;padding-top:12px;">
+        <button id="settingsSaveBtn">SAVE</button>
+        <button id="settingsClearBtn">CLEAR BOTH / USE SIMULATED DATA</button>
+      </div>
+      <div id="settingsStatus" style="margin-top:10px;font-size:11px;"></div>
+    </div>
+  </div>
+</div>
+
+<script src="terminal.js"></script>
+</body>
+</html>

@@ -1,0 +1,109 @@
+<!doctype html>
+<html>
+<head>
+<meta charset="utf-8">
+<title>Rectify Jabre - Sign On</title>
+<link rel="stylesheet" href="../theme.css">
+<style>
+  html, body {
+    height: 100%;
+    background: var(--bg-black);
+    display: flex; align-items: center; justify-content: center;
+  }
+  .panel {
+    width: 380px;
+    background: var(--chrome-1);
+    border: 1px solid var(--border-light);
+    box-shadow: none;
+  }
+  .panel-head {
+    background: linear-gradient(180deg, #232323, #171717);
+    border-bottom: 2px solid var(--red);
+    padding: 16px 0 12px;
+    display: flex; flex-direction: column; align-items: center;
+  }
+  .panel-head img { width: 46px; height: 46px; margin-bottom: 6px; }
+  .panel-head .word-top { font-family: Georgia, serif; font-size: 18px; color: #eee; }
+  .panel-head .word-bottom { font-family: Georgia, serif; font-size: 18px; color: var(--red); font-style: italic; margin-top: -4px; }
+  .panel-body { padding: 18px 22px 22px; }
+  .field { margin-bottom: 12px; }
+  .field label {
+    display: block; font-size: 11px; color: var(--text-dim);
+    text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 3px;
+  }
+  .field input, .field select {
+    width: 100%; background: #0e0e0e; border: 1px solid var(--border-light);
+    color: #e8e8e8; padding: 6px 8px; font-family: var(--font-mono); font-size: 13px;
+  }
+  .field input:focus, .field select:focus { outline: none; border-color: var(--red); }
+  .row2 { display: flex; gap: 10px; }
+  .row2 .field { flex: 1; }
+  .connect-btn {
+    width: 100%; margin-top: 6px; padding: 8px;
+    background: linear-gradient(180deg, var(--red-bright), var(--red-dark));
+    border: 1px solid #6d0d10; color: #fff; font-weight: bold;
+    letter-spacing: 1px; font-size: 12px;
+  }
+  .connect-btn:hover { filter: brightness(1.1); border-color: #fff; }
+  .connect-btn:active { filter: brightness(0.9); }
+  .error {
+    margin-top: 10px; padding: 6px 8px;
+    background: #2a0a0a; border: 1px solid var(--red);
+    color: #ff8a8a; font-family: var(--font-mono); font-size: 11px;
+    display: none;
+  }
+  .hint {
+    margin-top: 14px; padding-top: 10px; border-top: 1px solid var(--border);
+    font-family: var(--font-mono); font-size: 10px; color: #666; line-height: 1.6;
+  }
+  .footer-strip {
+    padding: 6px 22px; border-top: 1px solid var(--border);
+    font-size: 10px; color: #555; display: flex; justify-content: space-between;
+  }
+</style>
+</head>
+<body>
+  <div class="panel">
+    <div class="panel-head">
+      <img src="../../assets/logo.png" onerror="this.style.display='none'">
+      <div class="word-top">Rectify&trade;</div>
+      <div class="word-bottom">jabre</div>
+    </div>
+    <div class="panel-body">
+      <div class="field">
+        <label for="agentId">Agent Sign-On ID</label>
+        <input id="agentId" type="text" autocomplete="off" spellcheck="false" maxlength="12">
+      </div>
+      <div class="field">
+        <label for="password">Password</label>
+        <input id="password" type="password" autocomplete="off" maxlength="24">
+      </div>
+      <div class="row2">
+        <div class="field">
+          <label for="dutyCode">Duty Code</label>
+          <select id="dutyCode">
+            <option value="AA">AA - AGENT</option>
+            <option value="SUP">SUP - SUPERVISOR</option>
+          </select>
+        </div>
+        <div class="field">
+          <label for="pcc">Location (PCC)</label>
+          <input id="pcc" type="text" value="7X4Y" maxlength="6">
+        </div>
+      </div>
+      <button class="connect-btn" id="connectBtn">CONNECT</button>
+      <div class="error" id="error"></div>
+      <div class="hint">
+        DEMO PROFILES:<br>
+        1A2B3C / jabre1 / DUTY AA or SUP<br>
+        DEMO01 / demo / DUTY AA
+      </div>
+    </div>
+    <div class="footer-strip">
+      <span>REGION: DOMESTIC</span>
+      <span>TERMINAL: RJ-360</span>
+    </div>
+  </div>
+  <script src="login.js"></script>
+</body>
+</html>

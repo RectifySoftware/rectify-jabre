@@ -1,0 +1,52 @@
+{
+  "name": "rectify-jabre",
+  "version": "1.0.0",
+  "description": "Rectify Jabre - GDS-style travel booking terminal",
+  "main": "main.js",
+  "author": "Rectify Jabre",
+  "license": "UNLICENSED",
+  "private": true,
+  "scripts": {
+    "start": "electron .",
+    "dist": "electron-builder",
+    "release": "electron-builder --publish always"
+  },
+  "devDependencies": {
+    "electron": "^31.0.0",
+    "electron-builder": "^24.13.3"
+  },
+  "dependencies": {
+    "electron-updater": "^6.8.9",
+    "lowdb": "^1.0.0"
+  },
+  "build": {
+    "appId": "com.rectify.jabre",
+    "productName": "Rectify Jabre",
+    "directories": {
+      "output": "release"
+    },
+    "publish": {
+      "provider": "github",
+      "owner": "govll",
+      "repo": "rectify-jabre"
+    },
+    "files": [
+      "main.js",
+      "preload.js",
+      "src/**/*",
+      "assets/**/*",
+      "!node_modules/*/{CHANGELOG.md,README.md,readme.md}"
+    ],
+    "win": {
+      "target": "nsis",
+      "icon": "assets/icon.ico"
+    },
+    "nsis": {
+      "oneClick": false,
+      "allowToChangeInstallationDirectory": true,
+      "createDesktopShortcut": true,
+      "createStartMenuShortcut": true,
+      "shortcutName": "Rectify Jabre"
+    }
+  }
+}
