@@ -54,8 +54,11 @@
   }
   .hint {
     margin-top: 14px; padding-top: 10px; border-top: 1px solid var(--border);
-    font-family: var(--font-mono); font-size: 10px; color: #666; line-height: 1.6;
+    font-family: var(--font-mono); font-size: 11px; color: #888; line-height: 1.6;
+    text-align: center;
   }
+  .hint a { color: var(--red-bright); text-decoration: none; cursor: default; }
+  .hint a:hover { text-decoration: underline; }
   .footer-strip {
     padding: 6px 22px; border-top: 1px solid var(--border);
     font-size: 10px; color: #555; display: flex; justify-content: space-between;
@@ -94,9 +97,7 @@
       <button class="connect-btn" id="connectBtn">CONNECT</button>
       <div class="error" id="error"></div>
       <div class="hint">
-        DEMO PROFILES:<br>
-        1A2B3C / jabre1 / DUTY AA or SUP<br>
-        DEMO01 / demo / DUTY AA
+        NO ACCOUNT YET? <a id="createAccountLink">CREATE AN AGENT ACCOUNT</a>
       </div>
     </div>
     <div class="footer-strip">

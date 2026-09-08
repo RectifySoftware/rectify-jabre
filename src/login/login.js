@@ -50,3 +50,7 @@ connectBtn.addEventListener('click', attemptLogin);
     if (e.key === 'Enter') attemptLogin();
   });
 });
+
+document.getElementById('createAccountLink').addEventListener('click', () => {
+  window.rj.goToSetup();
+});

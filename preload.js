@@ -4,7 +4,10 @@ contextBridge.exposeInMainWorld('rj', {
   version: process.env.npm_package_version || null,
 
   login: (creds) => ipcRenderer.invoke('auth:login', creds),
-  demoAgents: () => ipcRenderer.invoke('auth:demoAgents'),
+  hasAgents: () => ipcRenderer.invoke('auth:hasAgents'),
+  createAgent: (data) => ipcRenderer.invoke('auth:createAgent', data),
+  goToSetup: () => ipcRenderer.invoke('nav:toSetup'),
+  goToLogin: () => ipcRenderer.invoke('nav:toLogin'),
 
   onSessionInit: (cb) => ipcRenderer.on('session:init', (evt, session) => cb(session)),
 

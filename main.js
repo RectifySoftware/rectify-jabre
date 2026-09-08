@@ -3,6 +3,7 @@ const path = require('path');
 const fs = require('fs');
 
 const db = require('./src/lib/store');
+const { hashPassword, verifyPassword } = require('./src/lib/auth');
 const { AIRPORTS, parseDDMMM, formatDateLabel, validateAirports, haversineKm, nearestAirports } = require('./src/lib/flights');
 const { search: searchAirportsByText } = require('./src/lib/airport-lookup');
 const { buildItineraryHtml } = require('./src/lib/itinerary');
@@ -39,10 +40,23 @@ function createSplash() {
   splashWin.once('ready-to-show', () => splashWin.show());
 }
 
+function hasAnyAgents() {
+  return db.get('agents').value().length > 0;
+}
+
+function loadSetupScreen() {
+  loginWin.setTitle('Rectify Jabre - Initial Setup');
+  loginWin.loadFile(path.join(__dirname, 'src', 'setup', 'setup.html'));
+}
+function loadSignOnScreen() {
+  loginWin.setTitle('Rectify Jabre - Sign On');
+  loginWin.loadFile(path.join(__dirname, 'src', 'login', 'login.html'));
+}
+
 function createLogin() {
   loginWin = new BrowserWindow({
     width: 460,
-    height: 560,
+    height: 620,
     frame: true,
     resizable: false,
     backgroundColor: '#1b1b1b',
@@ -55,7 +69,11 @@ function createLogin() {
     }
   });
   loginWin.setMenuBarVisibility(false);
-  loginWin.loadFile(path.join(__dirname, 'src', 'login', 'login.html'));
+  if (hasAnyAgents()) {
+    loadSignOnScreen();
+  } else {
+    loadSetupScreen();
+  }
   loginWin.once('ready-to-show', () => {
     if (splashWin) {
       splashWin.close();
@@ -164,8 +182,9 @@ app.on('window-all-closed', () => {
 
 // ---------- IPC: auth ----------
 ipcMain.handle('auth:login', (evt, { agentId, password, dutyCode }) => {
+  agentId = (agentId || '').trim().toUpperCase();
   const agent = db.get('agents').find({ agentId }).value();
-  if (!agent || agent.password !== password) {
+  if (!agent || !verifyPassword(password || '', agent.passwordSalt, agent.passwordHash)) {
     return { ok: false, error: 'INVALID SIGN-ON - AGENT ID OR PASSWORD NOT RECOGNIZED' };
   }
   if (!agent.dutyCodes.includes(dutyCode)) {
@@ -182,9 +201,53 @@ ipcMain.handle('auth:login', (evt, { agentId, password, dutyCode }) => {
   return { ok: true, session };
 });
 
-ipcMain.handle('auth:demoAgents', () => {
-  return db.get('agents').map((a) => ({ agentId: a.agentId, dutyCodes: a.dutyCodes, pcc: a.pcc })).value();
+const AGENT_ID_RE = /^[A-Z0-9]{3,10}$/;
+const PCC_RE = /^[A-Z0-9]{2,6}$/;
+const VALID_DUTY_CODES = ['AA', 'SUP'];
+
+ipcMain.handle('auth:hasAgents', () => hasAnyAgents());
+
+ipcMain.handle('auth:createAgent', (evt, { agentId, name, password, confirmPassword, pcc, dutyCodes }) => {
+  agentId = (agentId || '').trim().toUpperCase();
+  name = (name || '').trim().toUpperCase();
+  pcc = (pcc || '').trim().toUpperCase();
+  const codes = Array.isArray(dutyCodes) ? dutyCodes.filter((c) => VALID_DUTY_CODES.includes(c)) : [];
+
+  if (!AGENT_ID_RE.test(agentId)) {
+    return { ok: false, error: 'AGENT ID MUST BE 3-10 LETTERS/NUMBERS' };
+  }
+  if (db.get('agents').find({ agentId }).value()) {
+    return { ok: false, error: 'AGENT ID ALREADY EXISTS - CHOOSE ANOTHER' };
+  }
+  if (!name) {
+    return { ok: false, error: 'FULL NAME IS REQUIRED' };
+  }
+  if (!PCC_RE.test(pcc)) {
+    return { ok: false, error: 'PCC MUST BE 2-6 LETTERS/NUMBERS' };
+  }
+  if (!password || password.length < 8) {
+    return { ok: false, error: 'PASSWORD MUST BE AT LEAST 8 CHARACTERS' };
+  }
+  if (password !== confirmPassword) {
+    return { ok: false, error: 'PASSWORDS DO NOT MATCH' };
+  }
+  if (codes.length === 0) {
+    return { ok: false, error: 'SELECT AT LEAST ONE DUTY CODE' };
+  }
+
+  const { salt, hash } = hashPassword(password);
+  db.get('agents').push({
+    agentId, name, pcc, dutyCodes: codes,
+    passwordSalt: salt, passwordHash: hash,
+    createdAt: new Date().toISOString()
+  }).write();
+
+  if (loginWin) loadSignOnScreen();
+  return { ok: true, agentId };
 });
+
+ipcMain.handle('nav:toSetup', () => { if (loginWin) loadSetupScreen(); return { ok: true }; });
+ipcMain.handle('nav:toLogin', () => { if (loginWin) loadSignOnScreen(); return { ok: true }; });
 
 // ---------- Live search result cache ----------
 // Keeps every recognized live fare provider's success from having to be

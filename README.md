@@ -10,14 +10,19 @@ npm install
 npm start
 ```
 
-On launch you'll get the splash screen, then Sign-On, then you're in the terminal.
+On launch you'll get the splash screen, then either Initial Setup or Sign-On depending on whether an account already exists:
 
-### Demo agent profiles
+- **Initial Setup** (first run only, no agent accounts exist yet) — create your own
+  agent account: Agent ID, full name, password, PCC, and duty code(s). There's no
+  default/demo login baked in, you set your own the first time you open it.
+- **Sign-On** (once at least one account exists) — sign in with whatever account
+  you've created. There's also a "Create an Agent Account" link on this screen, so
+  you can add more accounts later (say, for someone else using the same install)
+  without needing to already be signed in.
 
-| Agent ID | Password | Duty Code | PCC  |
-|----------|----------|-----------|------|
-| 1A2B3C   | jabre1   | AA or SUP | 7X4Y |
-| DEMO01   | demo     | AA        | 9Q1Z |
+Passwords never get stored in plain text, they're salted and hashed locally
+(Node's `crypto.scrypt`) in the same local database as everything else (see
+**Data persistence** below). None of it ever leaves your machine.
 
 ## Building the Windows installer
 
@@ -138,6 +143,7 @@ Live fares get requested directly in whatever currency you've got selected, then
 main.js                 Electron main process (windows, IPC, PDF export)
 preload.js               contextBridge API exposed to renderers as window.rj
 src/lib/store.js         lowdb-backed local persistence (agents, PNRs, settings)
+src/lib/auth.js          password hashing (crypto.scrypt, salted per agent)
 src/lib/flights.js       airport reference data + distance/date helpers (no mock flights)
 src/lib/airport-lookup.js   IATA code search (city/country/name -> airports)
 src/lib/airports-data.json  ~5,400 real airports w/ scheduled service (OurAirports data)
@@ -147,6 +153,7 @@ src/lib/apify.js         live multi-source fare-scraper integration (via Apify)
 src/lib/rates.js         live FX rate fetch (Frankfurter API)
 src/lib/itinerary.js     itinerary HTML used for PDF export
 src/splash/               splash screen
+src/setup/                initial setup / create-agent-account screen
 src/login/                sign-on screen
 src/terminal/              main terminal UI (menu, toolbar, tabs, command line)
 scripts/generate-assets.js  generates the placeholder icon.ico / logo.png

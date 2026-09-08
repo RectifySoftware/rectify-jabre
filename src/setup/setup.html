@@ -1,0 +1,122 @@
+<!doctype html>
+<html>
+<head>
+<meta charset="utf-8">
+<title>Rectify Jabre - Initial Setup</title>
+<link rel="stylesheet" href="../theme.css">
+<style>
+  html, body {
+    height: 100%;
+    background: var(--bg-black);
+    display: flex; align-items: center; justify-content: center;
+  }
+  .panel {
+    width: 400px;
+    background: var(--chrome-1);
+    border: 1px solid var(--border-light);
+  }
+  .panel-head {
+    background: linear-gradient(180deg, #232323, #171717);
+    border-bottom: 2px solid var(--red);
+    padding: 16px 0 12px;
+    display: flex; flex-direction: column; align-items: center;
+  }
+  .panel-head img { width: 40px; height: 40px; margin-bottom: 4px; }
+  .panel-head .word-top { font-family: Georgia, serif; font-size: 16px; color: #eee; }
+  .panel-head .word-bottom { font-family: Georgia, serif; font-size: 16px; color: var(--red); font-style: italic; margin-top: -3px; }
+  .panel-head .subtitle { margin-top: 6px; font-size: 10px; color: #888; letter-spacing: 1px; text-transform: uppercase; }
+  .panel-body { padding: 16px 22px 20px; }
+  .field { margin-bottom: 10px; }
+  .field label {
+    display: block; font-size: 11px; color: var(--text-dim);
+    text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 3px;
+  }
+  .field input {
+    width: 100%; background: #0e0e0e; border: 1px solid var(--border-light);
+    color: #e8e8e8; padding: 6px 8px; font-family: var(--font-mono); font-size: 13px;
+  }
+  .field input:focus { outline: none; border-color: var(--red); }
+  .row2 { display: flex; gap: 10px; }
+  .row2 .field { flex: 1; }
+  .duty-row { display: flex; gap: 16px; margin-top: 4px; }
+  .duty-check { display: flex; align-items: center; gap: 6px; font-family: var(--font-mono); font-size: 12px; color: #ddd; }
+  .duty-check input { width: auto; }
+  .create-btn {
+    width: 100%; margin-top: 10px; padding: 8px;
+    background: linear-gradient(180deg, var(--red-bright), var(--red-dark));
+    border: 1px solid #6d0d10; color: #fff; font-weight: bold;
+    letter-spacing: 1px; font-size: 12px;
+  }
+  .create-btn:hover { filter: brightness(1.1); border-color: #fff; }
+  .create-btn:active { filter: brightness(0.9); }
+  .error, .ok-msg {
+    margin-top: 10px; padding: 6px 8px;
+    font-family: var(--font-mono); font-size: 11px;
+    display: none;
+  }
+  .error { background: #2a0a0a; border: 1px solid var(--red); color: #ff8a8a; }
+  .ok-msg { background: #0a2a10; border: 1px solid #2f7d3a; color: #8fdc9a; }
+  .hint {
+    margin-top: 12px; padding-top: 10px; border-top: 1px solid var(--border);
+    font-family: var(--font-mono); font-size: 11px; color: #888; line-height: 1.6;
+    text-align: center;
+  }
+  .hint a { color: var(--red-bright); text-decoration: none; cursor: default; }
+  .hint a:hover { text-decoration: underline; }
+  .intro {
+    font-family: var(--font-mono); font-size: 11px; color: #999;
+    line-height: 1.5; margin-bottom: 14px;
+  }
+</style>
+</head>
+<body>
+  <div class="panel">
+    <div class="panel-head">
+      <img src="../../assets/logo.png" onerror="this.style.display='none'">
+      <div class="word-top">Rectify&trade;</div>
+      <div class="word-bottom">jabre</div>
+      <div class="subtitle" id="subtitle">Initial Setup</div>
+    </div>
+    <div class="panel-body">
+      <div class="intro" id="intro">
+        No agent accounts exist yet on this terminal. Create the first one to get started.
+        Your password is stored locally, salted and hashed - never in plain text.
+      </div>
+      <div class="field">
+        <label for="agentId">Agent Sign-On ID</label>
+        <input id="agentId" type="text" autocomplete="off" spellcheck="false" maxlength="10" placeholder="3-10 letters/numbers">
+      </div>
+      <div class="field">
+        <label for="fullName">Full Name</label>
+        <input id="fullName" type="text" autocomplete="off" spellcheck="false" maxlength="40">
+      </div>
+      <div class="field">
+        <label for="password">Password</label>
+        <input id="password" type="password" autocomplete="off" maxlength="64" placeholder="At least 8 characters">
+      </div>
+      <div class="field">
+        <label for="confirmPassword">Confirm Password</label>
+        <input id="confirmPassword" type="password" autocomplete="off" maxlength="64">
+      </div>
+      <div class="field">
+        <label for="pcc">Location (PCC)</label>
+        <input id="pcc" type="text" autocomplete="off" spellcheck="false" maxlength="6" placeholder="2-6 letters/numbers">
+      </div>
+      <div class="field">
+        <label>Duty Codes</label>
+        <div class="duty-row">
+          <label class="duty-check"><input type="checkbox" id="dutyAA" checked> AA - AGENT</label>
+          <label class="duty-check"><input type="checkbox" id="dutySUP"> SUP - SUPERVISOR</label>
+        </div>
+      </div>
+      <button class="create-btn" id="createBtn">CREATE ACCOUNT</button>
+      <div class="error" id="error"></div>
+      <div class="ok-msg" id="okMsg"></div>
+      <div class="hint" id="backHint" style="display:none;">
+        <a id="backLink">&larr; BACK TO SIGN ON</a>
+      </div>
+    </div>
+  </div>
+  <script src="setup.js"></script>
+</body>
+</html>
