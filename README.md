@@ -1,8 +1,7 @@
 ![image](https://raw.githubusercontent.com/RectifySoftware/rectify-jabre/refs/heads/main/assets/logo.png)
 # Rectify™ Jabre
 
-Rectify™ Jabre is a Windows desktop GDS-style travel booking terminal, built with Electron. It is based off other 
-airline reservation terminals like Sabre Red 360 or Amadeus Selling Platform.
+Rectify™ Jabre is a Windows desktop GDS style travel booking terminal, built with Electron. Basically I wanted my own version of the old airline reservation terminals like Sabre Red 360 or Amadeus Selling Platform, the ones travel agents actually use, so I built one.
 
 ## Running in development
 
@@ -11,7 +10,7 @@ npm install
 npm start
 ```
 
-On launch you'll see the splash screen, then the Sign-On screen, then the terminal.
+On launch you'll get the splash screen, then Sign-On, then you're in the terminal.
 
 ### Demo agent profiles
 
@@ -26,23 +25,16 @@ On launch you'll see the splash screen, then the Sign-On screen, then the termin
 npm run dist
 ```
 
-Output lands in `release/` as an NSIS `.exe` installer for Windows (unsigned).
-Swap `/assets/icon.ico` and `/assets/logo.png` with your final artwork before
-building — both are placeholder-generated sphere graphics right now
-(see `scripts/generate-assets.js`).
+Output lands in `release/` as an NSIS `.exe` installer for Windows (unsigned, so Windows will moan at you, that's normal).
+Swap out `/assets/icon.ico` and `/assets/logo.png` for your own artwork before you build. Right now both are just placeholder sphere graphics I generated with a script (`scripts/generate-assets.js`), not final art.
 
 ## Data persistence
 
-PNRs, agent profiles, API settings, and the 24h live-fare cache are all stored
-locally in a JSON file (via `lowdb`) inside Electron's per-user `userData`
-directory, so bookings survive closing and reopening the app. Flight
-availability is never fabricated — see **Live airline data** below; a live
-provider must be connected before `A` will return anything.
+PNRs, agent profiles, API settings and the 24h live fare cache all live locally in a JSON file (via `lowdb`) inside Electron's per-user `userData` folder, so your bookings are still there next time you open the app. One thing I'm strict about: flight availability is never made up. See **Live airline data** below, you need a live provider connected before `A` will give you anything back.
 
 ## Command set
 
-Type commands into the entry field at the bottom of the terminal (or press F3
-to focus it). All commands are case-insensitive.
+Type commands into the entry field at the bottom of the terminal (or hit F3 to jump straight to it). Commands aren't case sensitive.
 
 | Command | Description |
 |---|---|
@@ -51,34 +43,23 @@ to focus it). All commands are case-insensitive.
 | `S<line>[class]` | Sell a segment from the last availability display, e.g. `S2` or `S2M` |
 | `NM1<LAST>/<FIRST> [TITLE]` | Add a passenger name, e.g. `NM1SMITH/JOHN MR` |
 | `FXP` | Price the itinerary using the last sold fare class |
-| `ER` | End & Retrieve — saves the PNR and generates a record locator |
-| `IG` | Ignore — discards the current workspace transaction |
+| `ER` | End & Retrieve, saves the PNR and gives you a record locator |
+| `IG` | Ignore, ditches the current workspace transaction |
 | `RT<LOCATOR>` | Retrieve a saved PNR by its record locator |
-| `QR` | Queue Review — lists all saved PNRs |
-| `QD<LOCATOR>` | Queue Delete — removes a PNR from the queue |
-| `WP` | Write/Print itinerary to PDF (PNR must be saved with `ER` first) |
+| `QR` | Queue Review, lists all saved PNRs |
+| `QD<LOCATOR>` | Queue Delete, removes a PNR from the queue |
+| `WP` | Write/Print itinerary to PDF (PNR needs to be saved with `ER` first) |
 | `I` / `IR` | Display the active PNR in the current workspace tab |
 | `SI` | Sign off and close the terminal |
 | `CC<CODE>` | Set the display currency to a live exchange rate, e.g. `CCEUR` |
 | `CC` | List all available currency codes |
-| `HELP` | Show the full command reference in-app |
+| `HELP` | Show the full command reference in app |
 
-Any syntactically valid 3-letter IATA code is accepted as origin/destination —
-there's no local "known airports" gate, since the live provider is the real
-authority on whether an airport exists and has flights, not a hand-maintained
-list here. A small dataset of ~140 major airports (with coordinates) is kept
-in `src/lib/flights.js` purely to power the alternate-airport suggestions
-described below.
+Any syntactically valid 3 letter IATA code works as an origin or destination. I deliberately didn't put in a local "known airports" gate for it, because the live provider is the actual authority on whether an airport exists and has flights, not some hardcoded list I wrote. There's a small dataset of around 140 major airports with coordinates sitting in `src/lib/flights.js`, but that's only there to power the alternate airport suggestions I'll get into below.
 
-### `DA` — IATA code lookup
+### `DA`, IATA code lookup
 
-Don't know an airport's 3-letter code? `DA <text>` searches ~5,400 real
-airports with scheduled service by city, country, or airport name and shows
-their codes — no more digging through other websites to find one before
-typing an `A` search. It's fully offline (bundled from the
-[OurAirports](https://ourairports.com/data/) open dataset, see
-`scripts/build-airports-data.js`), so it's instant and doesn't touch your API
-quota. Examples:
+Don't know an airport's 3 letter code off the top of your head? Fair, nobody does. `DA <text>` searches roughly 5,400 real airports with scheduled service by city, country or airport name and gives you the codes back, so you're not tabbing out to some other website mid search. It's fully offline (I bundled it from the [OurAirports](https://ourairports.com/data/) open dataset, see `scripts/build-airports-data.js`), so it's instant and doesn't eat into your API quota at all. A few examples:
 
 ```
 DA LEEDS       any airport with "Leeds" in its city name (e.g. LBA)
@@ -86,10 +67,7 @@ DA PORTUGAL    every airport in Portugal (FAO, LIS, OPO, ...)
 DA HEATHROW    matches by airport name too
 ```
 
-Results are ranked (exact/whole-word city or country matches first, then
-partial matches, then airport-name matches) and capped at 30 with a note if
-there were more — a broad query like `DA UNITED STATES` will tell you how
-many total matches there were so you know to narrow it down.
+Results get ranked (exact or whole word city/country matches first, then partial matches, then airport name matches) and capped at 30, with a note telling you how many more there were if you searched something broad like `DA UNITED STATES`, so you know to narrow it down a bit.
 
 ### Example booking flow
 
@@ -121,97 +99,38 @@ WP                    print itinerary to PDF
 
 ## Live airline data
 
-**Every result `A` shows is a genuine live search result — nothing is ever
-invented.** There is no offline/mock/simulated mode: if no live provider is
-connected, `A` refuses the search outright with an error telling you to
-connect one, rather than making something up. Open
-**Tools > Live Data Settings...** and connect one or both of:
+**Every result `A` gives you is a genuine live search result, I never fake any of it.** There's no offline or simulated mode hiding in here, if there's no live provider connected, `A` just refuses the search and tells you to go connect one instead of pretending. Head to **Tools > Live Data Settings...** and hook up one or both of:
 
-1. **[SearchAPI.io](https://www.searchapi.io/users/sign_up)** (tried first) —
-   mirrors live Google Flights results. Free tier: 100 requests total, no
-   card required. Fine to start with, but not a long-term supply on its own —
-   their cheapest paid tier is $40/month, no small pay-as-you-go option.
-2. **[Apify](https://console.apify.com/sign-up)** (used automatically once
-   SearchAPI's free requests run out, or if it's the only one configured) —
-   runs a multi-source fare-scraping Actor (Google Flights, Kiwi,
-   Travelpayouts, budget carriers) at roughly **$0.0003 per search**
-   (~30¢ per 1,000 searches), pay-per-use, no subscription. New accounts get
-   free monthly platform credit that alone covers thousands of casual
-   searches. This is the realistic "won't run out" option for occasional
-   personal use.
+1. **[SearchAPI.io](https://www.searchapi.io/users/sign_up)** (tried first), mirrors live Google Flights results. Free tier gives you 100 requests total, no card needed. Good to get started with, but not something you can rely on long term since their cheapest paid tier is $40/month with no small pay-as-you-go option.
+2. **[Apify](https://console.apify.com/sign-up)** (kicks in automatically once SearchAPI's free requests run dry, or if it's the only one you've set up), runs a multi-source fare-scraping Actor (Google Flights, Kiwi, Travelpayouts, budget carriers) at roughly **$0.0003 per search**, so about 30p per 1,000 searches, pay as you go, no subscription. New accounts get free monthly platform credit that covers thousands of casual searches on its own. Honestly this is the realistic "won't run dry on you" option if you're just messing about with it.
 
-There genuinely isn't a free-forever *and* accurate option — real fare data
-costs every provider money at the source, so something eventually meters it.
-Apify's pay-per-use pricing is about as close as it gets on a hobby budget:
-even a few thousand searches a year comes out to a few dollars.
+I'll be straight with you, there isn't a free forever and accurate option out there. Real fare data costs every provider money at the source, so eventually something metres it. Apify's pay-per-use pricing is about as close as you'll get on a hobby budget though, even a few thousand searches a year only costs you a few quid.
 
-To keep both providers' quota going further, **live results are cached
-locally for 24 hours** per route/date/currency combination — searching the
-same trip again (e.g. a mate asks twice, or you switch currency back and
-forth) doesn't re-spend a request until the cache expires.
+To make both providers' quota stretch further, **live results get cached locally for 24 hours** per route/date/currency combo, so searching the same trip again (say a mate asks twice, or you flick currency back and forth) doesn't burn another request until the cache runs out.
 
-Results are always labeled so you know what you're looking at:
+Results are always labelled clearly so you know exactly what you're looking at:
 
-- **`[LIVE - REAL AIRLINE DATA]`** — a genuine flight result: real airline,
-  real flight number, real fare, priced in whatever currency you currently
-  have selected (`CC`). Add `, CACHED` when served from the local cache
-  instead of a fresh request.
+- **`[LIVE - REAL AIRLINE DATA]`**, a genuine flight result: real airline, real flight number, real fare, priced in whatever currency you've currently got selected (`CC`). You'll see `, CACHED` added on when it's served from the local cache instead of a fresh request.
 
 ### When there's no exact match
 
-If your exact route/date search comes back empty, the terminal automatically
-does a small, tightly-bounded search for real alternatives before giving up —
-it never fabricates a result to fill the gap:
+If your exact route and date search comes back empty, the terminal automatically runs a small, tightly bounded search for real alternatives before it gives up. It never invents a result just to fill the gap:
 
-1. **Nearby dates** — tries ±1 and ±2 days from your requested date (stopping
-   at the first day that has real results), in case the route exists but just
-   doesn't operate that day.
-2. **Nearby airports** — only if no nearby date worked, tries the single
-   closest alternate airport (by real great-circle distance) to your origin,
-   then to your destination, at your original date — e.g. searching `LBA-FAO`
-   with nothing found might turn up a real result from `MAN-FAO` instead.
-3. If genuinely nothing turns up anywhere, it says so plainly:
-   `NO FLIGHTS FOUND FOR THIS ROUTE, NEARBY DATES, OR NEARBY AIRPORTS`.
+1. **Nearby dates**, tries plus or minus 1 and 2 days from what you asked for (stops at the first day with real results), in case the route just doesn't run that particular day.
+2. **Nearby airports**, only kicks in if no nearby date worked, tries the single closest alternate airport (by real great-circle distance) to your origin, then your destination, on your original date. So searching `LBA-FAO` with nothing found might turn up a real result from `MAN-FAO` instead.
+3. If genuinely nothing turns up anywhere, it just tells you straight: `NO FLIGHTS FOUND FOR THIS ROUTE, NEARBY DATES, OR NEARBY AIRPORTS`.
 
-Any alternative shown is **clearly marked and highlighted** — a distinct
-amber-highlighted row with an `ALT` column explaining exactly what changed
-(e.g. `25AUG instead of 24AUG`, or `FROM MAN - MANCHESTER (62KM FROM LBA)
-INSTEAD OF LBA`) — plus a banner above the table so it's impossible to
-mistake an alternative for what you actually asked for. You can still `S<line>`
-an alternative directly; the segment gets sold using its real (alternate)
-route/date, not your original request.
+Any alternative you get shown is **clearly marked and highlighted**, a distinct amber row with an `ALT` column spelling out exactly what changed (e.g. `25AUG instead of 24AUG`, or `FROM MAN - MANCHESTER (62KM FROM LBA) INSTEAD OF LBA`), plus a banner above the table so there's no chance you mistake it for what you actually searched. You can still `S<line>` an alternative straight away, the segment just gets sold using its real (alternate) route and date, not your original request.
 
-This genuinely mirrors real-world pricing, good enough to hand someone an
-actual "here's what that flight costs" quote — it is not, however, a
-connection into a real GDS or airline inventory system. Nothing in this app
-ever actually books, holds, or purchases a real flight — `ER` only ever
-writes to the local PNR store, and every printed itinerary carries a clear
-"not a valid ticket" disclaimer.
+This genuinely mirrors real-world pricing well enough to hand someone an actual "here's what that flight costs" quote. It's not, however, hooked into a real GDS or airline inventory system. Nothing in this app ever actually books, holds or purchases a real flight, `ER` only ever writes to the local PNR store, and every itinerary you print carries a clear "not a valid ticket" disclaimer.
 
-(Amadeus previously had a free self-service flight API here, but Amadeus
-permanently decommissioned that program on July 17, 2026 — the developer
-portal now serves enterprise customers only, so it's no longer an option.
-Kiwi's Tequila API also closed to new self-serve developers.)
+(Amadeus used to have a free self-service flight API I was going to use here, but they permanently decommissioned that program on July 17, 2026, the developer portal is enterprise customers only now, so that's off the table. Kiwi's Tequila API also closed off to new self-serve developers, for what it's worth.)
 
-Clear both keys any time with **Tools > Live Data Settings... > Clear Both /
-Use Simulated Data** — searches will then be refused until a provider is
-reconnected.
+You can clear both keys any time from **Tools > Live Data Settings... > Clear Both / Use Simulated Data**, searches will just get refused until you reconnect a provider.
 
 ## Currency
 
-Live fares are requested directly in whatever currency is currently selected,
-then everything is converted on the fly (pivoting through USD) whenever you
-switch. The
-`CUR:` indicator in the status bar shows the currently selected display
-currency — click it, use `Tools > Change Currency...`, press **F11**, or type
-`CC<CODE>` (e.g. `CCEUR`, `CCGBP`, `CCJPY`) to switch. Every switch pulls live
-mid-market rates from the free [Frankfurter](https://www.frankfurter.app/) API
-(European Central Bank reference rates, no API key required) at that exact
-moment, so displayed fares track actual currency strength in real time. Rates
-are cached locally after each successful fetch — if the app is offline, it
-falls back to the last known rates and marks the status bar `(CACHED)`. This
-only changes how fares are *displayed and printed*; no real payment or
-transaction ever occurs.
+Live fares get requested directly in whatever currency you've got selected, then everything converts on the fly (pivoting through USD) any time you switch. The `CUR:` indicator in the status bar shows your currently selected display currency, click it, use `Tools > Change Currency...`, hit **F11**, or just type `CC<CODE>` (e.g. `CCEUR`, `CCGBP`, `CCJPY`) to switch. Every switch pulls live mid-market rates from the free [Frankfurter](https://www.frankfurter.app/) API (European Central Bank reference rates, no API key needed) right at that moment, so the fares you see actually track real currency movement. Rates get cached locally after each successful fetch, so if you're offline it just falls back to the last known rates and marks the status bar `(CACHED)`. Worth saying, this only changes how fares are displayed and printed, no real payment or transaction ever happens.
 
 ## Project layout
 
